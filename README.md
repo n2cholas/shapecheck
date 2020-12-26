@@ -1,6 +1,8 @@
 
 # ShapeCheck
 
+![Build & Tests](https://github.com/n2cholas/shapecheck/workflows/Build%20and%20Tests/badge.svg)
+
 Framework-agnostic library for checking array shapes at runtime.
 
 ## Install Library
