@@ -1,8 +1,10 @@
 from functools import wraps
-from typing import Sequence, Union, Optional, Dict, Callable
+from typing import Callable, Dict, Optional, Sequence, Union
 
 
-def is_compatible(shape: Sequence[int], expected_shape: Sequence[Union[int, str]], dim_dict: Optional[Dict[str, int]]=None) -> bool:
+def is_compatible(shape: Sequence[int],
+                  expected_shape: Sequence[Union[int, str]],
+                  dim_dict: Optional[Dict[str, int]] = None) -> bool:
     if dim_dict is None:
         dim_dict = {}
     if len(shape) != len(expected_shape):
