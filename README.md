@@ -17,7 +17,7 @@ pip install --upgrade git+https://github.com/n2cholas/shapecheck.git
 import numpy as np
 from shapecheck import check_shape
 
-@check_shape((-1, 'N'), ('N',), out_=(1, 'N'))
+@check_shape('-1,N', 'N', out='1,N')
 def f(x, y):
     return (x + y).sum(0, keepdims=True)
 

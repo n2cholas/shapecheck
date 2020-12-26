@@ -19,18 +19,35 @@ def is_compatible(shape, expected_shape, dim_dict=None):
     return True
 
 
-def check_shape(*in_shapes, out_=None):
+def check_shape(*in_shapes, out=None):
+    in_shapes = [_str_to_shape(in_s) for in_s in in_shapes]
+    if out is not None:
+        out = _str_to_shape(out)
+
     def decorator(f):
         @wraps(f)
         def inner(*args):
+            assert len(args) == len(in_shapes)
             dim_dict = {}
             for in_shape, arg in zip(in_shapes, args):
                 assert is_compatible(arg.shape, in_shape, dim_dict=dim_dict)
-            out = f(*args)
-            if out_:
-                assert is_compatible(out.shape, out_, dim_dict=dim_dict)
-            return out
+            output = f(*args)
+            if out:
+                assert is_compatible(output.shape, out, dim_dict=dim_dict)
+            return output
 
         return inner
 
     return decorator
+
+
+def _try_int(s):
+    # s.isnumeric() fails with -1
+    try:
+        return int(s)
+    except ValueError:
+        return s
+
+
+def _str_to_shape(string):
+    return tuple(_try_int(s.strip()) for s in string.split(','))
