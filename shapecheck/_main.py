@@ -1,7 +1,8 @@
 from functools import wraps
+from typing import Sequence, Union, Optional, Dict, Callable
 
 
-def is_compatible(shape, expected_shape, dim_dict=None):
+def is_compatible(shape: Sequence[int], expected_shape: Sequence[Union[int, str]], dim_dict: Optional[Dict[str, int]]=None) -> bool:
     if dim_dict is None:
         dim_dict = {}
     if len(shape) != len(expected_shape):
@@ -19,12 +20,12 @@ def is_compatible(shape, expected_shape, dim_dict=None):
     return True
 
 
-def check_shape(*in_shapes, out=None):
-    in_shapes = [_str_to_shape(in_s) for in_s in in_shapes]
+def check_shape(*in_shapes, out=None) -> Callable:
+    in_shapes = tuple(_str_to_shape(in_s) for in_s in in_shapes)
     if out is not None:
         out = _str_to_shape(out)
 
-    def decorator(f):
+    def decorator(f: Callable) -> int:
         @wraps(f)
         def inner(*args):
             assert len(args) == len(in_shapes)
@@ -41,7 +42,7 @@ def check_shape(*in_shapes, out=None):
     return decorator
 
 
-def _try_int(s):
+def _try_int(s: str) -> Union[int, str]:
     # s.isnumeric() fails with -1
     try:
         return int(s)
@@ -49,5 +50,5 @@ def _try_int(s):
         return s
 
 
-def _str_to_shape(string):
+def _str_to_shape(string: str) -> Sequence[Union[int, str]]:
     return tuple(_try_int(s.strip()) for s in string.split(','))
