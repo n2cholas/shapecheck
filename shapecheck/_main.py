@@ -9,10 +9,8 @@ def is_compatible(shape, expected_shape, dim_dict=None):
     for dim, exp_dim in zip(shape, expected_shape):
         if isinstance(exp_dim, str):
             if exp_dim in dim_dict:
-                print('Found')
                 exp_dim = dim_dict[exp_dim]
             else:
-                print('Adding ', exp_dim, dim, shape, expected_shape)
                 dim_dict[exp_dim] = dim
                 exp_dim = dim
 
