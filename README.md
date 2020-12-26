@@ -36,7 +36,7 @@ pytest tests/
 
 ## Contributing
 
-This library uses pre-commit hooks to fix formatting and other issues.
+You can optionally use `pre-commit` to fix formatting and other issues.
 `pre-commit` is in the `requirement-dev.txt`, so it should already be
 installed. Set it up via:
 
@@ -54,3 +54,6 @@ git commit -m "Make change"
 git add .
 git commit -m "Make change"  # actually commits
 ```
+
+If you don't use pre-commit, there is a GitHub action to automatically
+format your code when you push to `main`.
