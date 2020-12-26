@@ -27,7 +27,7 @@ def check_shape(*in_shapes, out=None) -> Callable:
     if out is not None:
         out = _str_to_shape(out)
 
-    def decorator(f: Callable) -> int:
+    def decorator(f: Callable) -> Callable:
         @wraps(f)
         def inner(*args):
             assert len(args) == len(in_shapes)
