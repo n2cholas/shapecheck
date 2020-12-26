@@ -4,6 +4,8 @@ from functools import wraps
 def is_compatible(shape, expected_shape, dim_dict=None):
     if dim_dict is None:
         dim_dict = {}
+    if len(shape) != len(expected_shape):
+        return False
     for dim, exp_dim in zip(shape, expected_shape):
         if isinstance(exp_dim, str):
             if exp_dim in dim_dict:

@@ -14,14 +14,16 @@ pip install --upgrade git+https://github.com/n2cholas/shapecheck.git
 ## Usage
 
 ```python
+import numpy as np
 from shapecheck import check_shape
 
-@check_shape((3,), (4,), out_=(2,))
-def f(x, y):
-    return x[:2]**2 + y[:2]**2
+@check_shape(('N', -1), ('N',), out_=('N', 1))
+def func(x, y):
+    return (x + y).sum(-1, keepdims=True)
 
-f(np.array([1, 2, 3]), np.array([1, 2, 3, 4]))  # succeeds
-f(np.array([1, 2]), np.array([1, 2, 3, 4]))  # fails
+func(np.ones((5, 3)), np.ones((5, 1)))  # succeeds
+func(np.ones((5, 7)), np.ones((5, 1)))  # succeeds
+func(np.ones((4, 3)), np.ones((5, 1)))  # fails
 ```
 
 ## Run Tests
