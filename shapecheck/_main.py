@@ -11,5 +11,7 @@ def check_shape(*in_shapes, out_=None):
             if out_:
                 assert is_compatible(out.shape, out_)
             return out
+
         return inner
+
     return decorator
