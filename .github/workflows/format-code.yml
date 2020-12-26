@@ -1,0 +1,40 @@
+name: Format Code
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          repository: ${{ github.repository }}
+          token: ${{ github.token }}
+
+
+      - name: Setup dependencies
+        run: |
+          pip install --upgrade yapf==0.30.0 isort
+      
+      - name: Format code
+        run: |
+          yapf --verbose --recursive --in-place --parallel .
+          isort .
+      
+      - name: Check for modified files
+        id: git-check
+        run: echo ::set-output name=modified::$(if git diff-index --quiet HEAD --; then echo "false"; else echo "true"; fi)
+      
+      - name: Push changes
+        if: steps.git-check.outputs.modified == 'true'
+        run: |
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@github.com'
+          git add .
+          git commit -am "Automated code format."
+          git push
