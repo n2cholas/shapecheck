@@ -85,3 +85,16 @@ def test_readme_example():
     f(np.ones((7, 6)), np.ones((6,)))  # succeeds
     with pytest.raises(AssertionError):
         f(np.ones((3, 2)), np.ones((5,)))  # fails
+
+
+def test_non_array_args():
+    @check_shape(None, '2,N', None)
+    def f(x, y, z):
+        return 1
+
+    f('some string', np.ones((2, 5)), np.ones((5,)))
+    f(np.ones((1, 2, 3)), np.ones((2, 6)), 'non-array object')
+    with pytest.raises(AssertionError):
+        f(np.ones((1, 1)), np.ones((3, 5)), np.ones((5,)))
+    with pytest.raises(AssertionError):
+        f('another-test', np.ones((3, 6)), 'non-array object')

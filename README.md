@@ -62,7 +62,6 @@ format your code when you push to `main`.
 
 ## Planned Features
 
-- Support non-array arguments/return values.
 - Better error messages.
   - collect all issues then report instead of failing eagerly
   - provide argument name, expected shape, and given shape.
