@@ -26,21 +26,21 @@ def f(a, b, c, d):
     # since we specified `out=`, the output shape will be checked as well
     return (a + b).sum(0, keepdims=True) + d
 
-f(np.ones((3, 5)), np.ones((5,)))  # succeeds
-f(np.ones((7, 6)), np.ones((6,)))  # succeeds
-f(np.ones((3, 2)), np.ones((5,)))  # fails
+f(np.ones((7, 5)), np.ones(5), 'anything', np.ones((3, 5)))  # succeeds
+f(np.ones((2, 6)), np.ones(6), np.ones(1), np.ones((3, 6)))  # succeeds
+f(np.ones((2, 6)), np.ones(5), np.ones(1), np.ones((3, 6)))  # fails
 ```
 
 The last statement throws a `ShapeError` with an informative message.
 
 ```bash
 shapecheck.shapecheck.ShapeError: in function f.
-Mapped Named Dimensions: {'N': 6}
+Named Dimensions: {'N': 6}.
 Input:
-    Match:    Argument: a Expected Shape: (-1, 'N') Actual Shape: (2, 6)
-    MisMatch: Argument: b Expected Shape: ('N',) Actual Shape: (5,)
+    Match:    Argument: a Expected Shape: (-1, 'N') Actual Shape: (2, 6).
+    MisMatch: Argument: b Expected Shape: ('N',) Actual Shape: (5,).
     Skipped:  Argument: c.
-    Match:    Argument: d Expected Shape: (3, 'N') Actual Shape: (3, 6
+    Match:    Argument: d Expected Shape: (3, 'N') Actual Shape: (3, 6).
 ```
 
 ## Run Tests

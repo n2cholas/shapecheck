@@ -17,14 +17,13 @@ class ShapeError(RuntimeError):
                  input_info: Sequence[_ShapeInfo],
                  output_info: Optional[_ShapeInfo] = None):
         strings = [
-            f'in function {fn_name}.', f'Mapped Named Dimensions: {named_dims}',
-            'Input:'
+            f'in function {fn_name}.', f'Named Dimensions: {named_dims}.', 'Input:'
         ]
         for inp in input_info:
             if inp.expected_shape:
                 info = (f'Argument: {inp.arg_name} '
                         f'Expected Shape: {inp.expected_shape} '
-                        f'Actual Shape: {inp.actual_shape}')
+                        f'Actual Shape: {inp.actual_shape}.')
                 if inp.is_compatible:
                     strings.append(_green_highlight(f'    Match:    {info}'))
                 else:
@@ -37,7 +36,7 @@ class ShapeError(RuntimeError):
             strings.append(
                 _red_highlight(f'    MisMatch: Argument: {output_info.arg_name} '
                                f'Expected Shape: {output_info.expected_shape} '
-                               f'Actual Shape: {output_info.actual_shape}'))
+                               f'Actual Shape: {output_info.actual_shape}.'))
 
         super().__init__('\n'.join(strings))
 
