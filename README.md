@@ -3,7 +3,19 @@
 
 ![Build & Tests](https://github.com/n2cholas/shapecheck/workflows/Build%20and%20Tests/badge.svg)
 
-Framework-agnostic library for checking array shapes at runtime.
+Framework-agnostic library for checking array/tensor shapes at runtime.
+
+Finding the root of shape mismatches can be troublesome, especially with
+broadcasting rules and mutable arrays. Documenting shapes with comments can
+become stale as code evolves. This library aims to solve both of those problems
+by ensuring function pre and post shape expectations are met. The concise
+syntax for expressing shapes serves to document code as well, so new users can
+quickly understand what's going on.
+
+With frameworks like JAX or TensorFlow, "runtime" is actually "compile" or
+"trace" time, so you don't pay any cost during execution. For frameworks like
+PyTorch, asynchronous execution will hide the cost of shape checking. You only
+pay a small overhead with synchronous, eager frameworks like numpy.
 
 ## Install Library
 
