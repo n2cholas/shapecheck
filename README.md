@@ -15,9 +15,9 @@ pip install --upgrade git+https://github.com/n2cholas/shapecheck.git
 
 ```python
 import numpy as np
-from shapecheck import check_shape
+from shapecheck import check_shapes
 
-@check_shape('-1,N', 'N', None, '3,N', out='3,N')
+@check_shapes('-1,N', 'N', None, '3,N', out='3,N')
 def f(a, b, c, d):
     # a must be rank 2, where the first dim can be anything.
     # b must be rank 1, where the first dim must be N (a's second dim)

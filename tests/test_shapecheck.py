@@ -1,13 +1,13 @@
 import numpy as np
 import pytest
 
-from shapecheck import ShapeError, check_shape
+from shapecheck import ShapeError, check_shapes
 
 from .utils import CaptureStdOut
 
 
 def test_basic():
-    @check_shape('3', '4', out='2')
+    @check_shapes('3', '4', out='2')
     def f(x, y):
         return x[:2]**2 + y[:2]**2
 
@@ -17,7 +17,7 @@ def test_basic():
 
 
 def test_named_dim():
-    @check_shape('3,N', 'N', out='1,N')
+    @check_shapes('3,N', 'N', out='1,N')
     def f(x, y):
         return (x + y).sum(0, keepdims=True)
 
@@ -27,7 +27,7 @@ def test_named_dim():
 
 
 def test_named_dim_one_arg():
-    @check_shape('A,A,N', out='N')
+    @check_shapes('A,A,N', out='N')
     def f(x):
         return x.sum((0, 1))
 
@@ -37,7 +37,7 @@ def test_named_dim_one_arg():
 
 
 def test_any_dim():
-    @check_shape('N,-1', out='N,1')
+    @check_shapes('N,-1', out='N,1')
     def f(x):
         return x.sum(-1, keepdims=True)
 
@@ -46,7 +46,7 @@ def test_any_dim():
 
 
 def test_ndim_mismatch():
-    @check_shape('-1,-1')
+    @check_shapes('-1,-1')
     def f(x):
         return x
 
@@ -61,7 +61,7 @@ def test_no_stdout():
     # Prevent pushing debug messages.
     with CaptureStdOut() as output:
 
-        @check_shape('3,A,A,N', out='N')
+        @check_shapes('3,A,A,N', out='N')
         def f(x):
             return x.sum((0, 2, 1))
 
@@ -75,9 +75,9 @@ def test_no_stdout():
 def test_readme_example():
     import numpy as np
 
-    from shapecheck import check_shape
+    from shapecheck import check_shapes
 
-    @check_shape('-1,N', 'N', None, '3,N', out='3,N')
+    @check_shapes('-1,N', 'N', None, '3,N', out='3,N')
     def f(a, b, c, d):
         return (a + b).sum(0, keepdims=True) + d
 
@@ -88,7 +88,7 @@ def test_readme_example():
 
 
 def test_non_array_args():
-    @check_shape(None, '2,N', None)
+    @check_shapes(None, '2,N', None)
     def f(x, y, z):
         return 1
 

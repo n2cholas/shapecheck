@@ -61,7 +61,7 @@ def is_compatible(shape: Sequence[int],
     return True
 
 
-def check_shape(*in_shapes, out=None) -> Callable:
+def check_shapes(*in_shapes, out=None) -> Callable:
     in_shapes = tuple(_str_to_shape(in_s) if in_s else in_s for in_s in in_shapes)
     if out is not None:
         out = _str_to_shape(out)
