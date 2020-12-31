@@ -96,8 +96,8 @@ def is_compatible(
 
 
 def check_shapes(*in_shapes, out=None) -> Callable[[Callable], Callable]:
-    in_shapes = [str_to_shape(in_s) if in_s else in_s
-                 for in_s in in_shapes]  # type:ignore  # yapf: disable
+    in_shapes = [str_to_shape(in_s) if in_s else in_s  # type: ignore
+                 for in_s in in_shapes]  # type: ignore  # yapf: disable
     if out is not None:
         out = str_to_shape(out)
 
