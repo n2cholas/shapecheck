@@ -207,3 +207,14 @@ def test_incompatible_output():
 
     with pytest.raises(ShapeError):
         f()
+
+
+# def test_nested_structs():
+#     @check_shapes(('N,1', 'N'), '1,2', out={'one': ('N,1', 'N'),
+#                                             'two': ('1,2')})
+#     def f(one, two):
+#         return {'one': one, 'two': two}
+
+#     f((np.ones((7,1)), np.ones((7,))), np.ones((1,2)))
+#     with pytest.raises(ShapeError):
+#         f((np.ones((7,1)), np.ones((6,))), np.ones((1,2)))
