@@ -198,3 +198,12 @@ def test_bad_named_variadic_shapes(e_shape1, e_shape2, shape1, shape2):
 
     with pytest.raises(ShapeError):
         f(np.ones(shape1), np.ones(shape2))
+
+
+def test_incompatible_output():
+    @check_shapes(out='1,1')
+    def f():
+        return np.ones((1,))
+
+    with pytest.raises(ShapeError):
+        f()

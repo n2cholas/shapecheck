@@ -45,4 +45,8 @@ jobs:
 
     - name: Test with pytest
       run: |
-        pytest
+        python -m pytest tests/ -vvv --cov shapecheck --cov-report term-missing
+
+    - name: Coverage
+      run: |
+        codecov

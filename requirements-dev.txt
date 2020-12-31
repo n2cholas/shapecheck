@@ -4,3 +4,5 @@ pre-commit
 isort
 yapf==0.30.0
 mypy
+pytest-cov
+codecov
