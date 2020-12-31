@@ -95,7 +95,7 @@ def is_compatible(
     return s_ind >= len(shape)  # false when last named variadic dimensions don't match
 
 
-def check_shapes(*in_shapes: str, out=None) -> Callable[[Callable], Callable]:
+def check_shapes(*in_shapes, out=None) -> Callable[[Callable], Callable]:
     in_shapes = [str_to_shape(in_s) if in_s else in_s
                  for in_s in in_shapes]  # type:ignore  # yapf: disable
     if out is not None:

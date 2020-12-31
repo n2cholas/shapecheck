@@ -2,6 +2,7 @@
 # ShapeCheck
 
 ![Build & Tests](https://github.com/n2cholas/shapecheck/workflows/Build%20and%20Tests/badge.svg)
+[![codecov](https://codecov.io/gh/n2cholas/shapecheck/branch/main/graph/badge.svg?token=KAW5F029PM)](https://codecov.io/gh/n2cholas/shapecheck)
 
 Framework-agnostic library for checking array/tensor shapes at runtime.
 
