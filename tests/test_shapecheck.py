@@ -95,6 +95,16 @@ def test_readme_example():
     with pytest.raises(ShapeError):
         g(np.ones((2, 3, 4, 1)), np.ones((1, 1)))  # fails
 
+    @check_shapes('batch,variadic...', 'variadic...')
+    def h(a, b):
+        pass
+
+    h(np.ones((7, 1, 2)), np.ones((1, 2)))  # succeeds
+    with pytest.raises(ShapeError):
+        h(np.ones((6, 2)), np.ones((1, 1)))  # fails
+    with pytest.raises(ShapeError):
+        h(np.ones((6, 2)), np.ones((1)))  # fails
+
 
 def test_non_array_args():
     @check_shapes(None, '2,N', None)
@@ -150,5 +160,41 @@ def test_compatible_variadic_shapes(shape, expected_shape):
     ((3, 3), ('n', 2, 'n', '...')),
     ((2, 3, 1, 1), ('n', 2, 'n', '...')),
 ])
-def test_non_compatible_variadic_shapes(shape, expected_shape):
+def test_incompatible_variadic_shapes(shape, expected_shape):
     assert not is_compatible(shape, expected_shape)
+
+
+@pytest.mark.parametrize('e_shape1, e_shape2, shape1, shape2', [
+    (('n...,1,1', 'n...', (1, 2, 3, 1, 1), (1, 2, 3))),
+    (('...,1,1', 'n...', (1, 2, 3, 1, 1), (1, 2, 3))),
+    (('n...,2,2', '1,n...', (2, 2), (1,))),
+    (('n...,1,1', 'a...', (1, 2, 3, 1, 1), (1, 3))),
+    (('1,2,a...,3,4', '6,a...,7', (1, 2, 9, 9, 3, 4), (6, 9, 9, 7))),
+    (('1,2,a...,3,4', '6,a...,7', (1, 2, 9, 3, 4), (6, 9, 7))),
+    (('1,2,a...,3,4', '6,a...,7', (1, 2, 3, 4), (6, 7))),
+])
+def test_named_variadic_shapes(e_shape1, e_shape2, shape1, shape2):
+    @check_shapes(e_shape1, e_shape2)
+    def f(a, b):
+        pass
+
+    f(np.ones(shape1), np.ones(shape2))
+
+
+@pytest.mark.parametrize('e_shape1, e_shape2, shape1, shape2', [
+    (('n...,1,1', 'n...', (1, 2, 3, 1, 1), (1, 3, 3))),
+    (('n...,1,1', 'n...', (1, 2, 3, 1, 1), (1, 3))),
+    (('n...,2,2', '1,n...', (2, 2), (1, 1))),
+    (('n...,2,2', 'n...', (2, 2), (1,))),
+    (('n...,', 'n...', (2, 2), (1,))),
+    (('1,2,a...,3,4', '6,a...,7', (1, 2, 8, 9, 3, 4), (6, 9, 9, 7))),
+    (('1,2,a...,3,4', '6,a...,7', (1, 2, 7, 3, 4), (6, 9, 7))),
+    (('1,2,a...,3,4', '6,a...,7', (1, 2, 3, 4), (6, 1, 7))),
+])
+def test_bad_named_variadic_shapes(e_shape1, e_shape2, shape1, shape2):
+    @check_shapes(e_shape1, e_shape2)
+    def f(a, b):
+        pass
+
+    with pytest.raises(ShapeError):
+        f(np.ones(shape1), np.ones(shape2))

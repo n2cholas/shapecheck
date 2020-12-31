@@ -55,6 +55,9 @@ Input:
     Match:    Argument: d Expected Shape: (3, 'N') Actual Shape: (3, 6).
 ```
 
+Above, the named dimensions have one letter names, but they can be strings of
+any length.
+
 This library also supports variadic dimensions. You can use '...' to indicate 0
 or more dimensions:
 
@@ -76,6 +79,19 @@ Named Dimensions: {}.
 Input:
     MisMatch: Argument: a Expected Shape: [1, '...', 1] Actual Shape: (2, 3, 4, 1).
     Match:    Argument: b Expected Shape: ['...', 1, 1] Actual Shape: (1, 1).
+```
+
+You can also name variadic dimensions, to ensure that a contiguous sequence of
+dimensions match between arguments. For example:
+
+```python
+@check_shapes('batch,variadic...', 'variadic...')
+def h(a, b):
+    pass
+
+h(np.ones((7, 1, 2)), np.ones((1, 2)))  # succeeds
+h(np.ones((6, 2)), np.ones((1, 1)))  # fails
+h(np.ones((6, 2)), np.ones((1)))  # fails
 ```
 
 ## Run Tests
