@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from shapecheck import ShapeError, check_shapes
+from shapecheck import ShapeError, check_shapes, is_compatible, str_to_shape
 
 from .utils import CaptureStdOut
 
@@ -86,6 +86,15 @@ def test_readme_example():
     with pytest.raises(ShapeError):
         f(np.ones((2, 6)), np.ones(5), np.ones(1), np.ones((3, 6)))  # fails
 
+    @check_shapes('1,...,1', '...,1,1')
+    def g(a, b):
+        pass
+
+    g(np.ones((1, 3, 4, 1)), np.ones((2, 1, 1)))  # succeeds
+    g(np.ones((1, 1)), np.ones((1, 1)))  # succeeds
+    with pytest.raises(ShapeError):
+        g(np.ones((2, 3, 4, 1)), np.ones((1, 1)))  # fails
+
 
 def test_non_array_args():
     @check_shapes(None, '2,N', None)
@@ -98,3 +107,48 @@ def test_non_array_args():
         f(np.ones((1, 1)), np.ones((3, 5)), np.ones((5,)))
     with pytest.raises(ShapeError):
         f('another-test', np.ones((3, 6)), 'non-array object')
+
+
+@pytest.mark.parametrize('string, shape', [('N,1,3,M', ('N', 1, 3, 'M')),
+                                           ('N, 1, 3, M', ('N', 1, 3, 'M')),
+                                           ('...,a,1', ('...', 'a', 1)),
+                                           ('1, ... ,2', (1, '...', 2)),
+                                           ('a,b,c,...', ('a', 'b', 'c', '...')),
+                                           ('...', ('...',))])
+def test_shape_to_str(string, shape):
+    result = str_to_shape(string)
+    for a, b in zip(shape, result):
+        assert a == b, f'Expected: {shape} Got: {result}'
+
+
+@pytest.mark.parametrize('string', ['...,...,...', 'a,...,b,...', '...,1,...'])
+def test_shape_to_str_error(string):
+    with pytest.raises(RuntimeError):
+        str_to_shape(string)
+
+
+@pytest.mark.parametrize('shape, expected_shape', [
+    ((3, 2, 3), ('n', 2, 'n')),
+    ((3, 2, 3), ('n', '...', 2, 'n')),
+    ((3, 1, 1, 2, 3), ('n', '...', 2, 'n')),
+    ((3, 2, 3), ('...', 'n', 2, 'n')),
+    ((1, 1, 3, 2, 3), ('...', 'n', 2, 'n')),
+    ((3, 2, 3), ('n', 2, 'n', '...')),
+    ((3, 2, 3, 1, 1), ('n', 2, 'n', '...')),
+    ((3, 2, 3), ('...',)),
+])
+def test_compatible_variadic_shapes(shape, expected_shape):
+    assert is_compatible(shape, expected_shape)
+
+
+@pytest.mark.parametrize('shape, expected_shape', [
+    ((3, 3, 3), ('n', 2, 'n')),
+    ((3, 2, 4), ('n', '...', 2, 'n')),
+    ((3, 1, 1, 3, 3), ('n', '...', 2, 'n')),
+    ((4, 2, 3), ('...', 'n', 2, 'n')),
+    ((1, 1, 2, 3), ('...', 'n', 2, 'n')),
+    ((3, 3), ('n', 2, 'n', '...')),
+    ((2, 3, 1, 1), ('n', 2, 'n', '...')),
+])
+def test_non_compatible_variadic_shapes(shape, expected_shape):
+    assert not is_compatible(shape, expected_shape)

@@ -1,6 +1,6 @@
 import functools
 import inspect
-from typing import Callable, Dict, NamedTuple, Optional, Sequence, Union
+from typing import Callable, Dict, Iterable, List, NamedTuple, Optional, Sequence, Union
 
 
 class _ShapeInfo(NamedTuple):
@@ -14,7 +14,7 @@ class ShapeError(RuntimeError):
     def __init__(self,
                  fn_name: str,
                  named_dims: Dict[str, int],
-                 input_info: Sequence[_ShapeInfo],
+                 input_info: Iterable[_ShapeInfo],
                  output_info: Optional[_ShapeInfo] = None):
         strings = [
             f'in function {fn_name}.', f'Named Dimensions: {named_dims}.', 'Input:'
@@ -46,25 +46,46 @@ def is_compatible(shape: Sequence[int],
                   dim_dict: Optional[Dict[str, int]] = None) -> bool:
     if dim_dict is None:
         dim_dict = {}
-    if len(shape) != len(expected_shape):
+
+    has_ellipsis = any(
+        isinstance(s, str) and s.endswith('...')
+        for s in expected_shape)  # type: ignore
+    if not has_ellipsis and len(shape) != len(expected_shape):
         return False
-    for dim, exp_dim in zip(shape, expected_shape):
+    if len(shape) < len(expected_shape) - int(has_ellipsis):
+        return False
+
+    s_ind, es_ind = 0, 0
+    while es_ind < len(expected_shape):
+        if s_ind >= len(shape):
+            exp_dim = expected_shape[es_ind]
+            return isinstance(exp_dim, str) and exp_dim.endswith('...')  # type: ignore
+        dim, exp_dim = shape[s_ind], expected_shape[es_ind]
+
         if isinstance(exp_dim, str):
-            if exp_dim in dim_dict:
+            if exp_dim.endswith('...'):
+                s_ind += len(shape) - len(expected_shape)
+            elif exp_dim in dim_dict:
                 exp_dim = dim_dict[exp_dim]
             else:
                 dim_dict[exp_dim] = dim
                 exp_dim = dim
 
-        if exp_dim != -1 and exp_dim is not None and exp_dim != dim:
+        if (isinstance(exp_dim, int) and exp_dim != -1 and exp_dim is not None and
+                exp_dim != dim):
             return False
+
+        s_ind += 1
+        es_ind += 1
+
     return True
 
 
-def check_shapes(*in_shapes, out=None) -> Callable:
-    in_shapes = tuple(_str_to_shape(in_s) if in_s else in_s for in_s in in_shapes)
+def check_shapes(*in_shapes, out=None) -> Callable[[Callable], Callable]:
+    in_shapes = [str_to_shape(in_s) if in_s else in_s
+                 for in_s in in_shapes]  # type:ignore  # yapf: disable
     if out is not None:
-        out = _str_to_shape(out)
+        out = str_to_shape(out)
 
     def decorator(f: Callable) -> Callable:
         argspec = inspect.getfullargspec(f)
@@ -108,13 +129,20 @@ def _red_highlight(s):
     return f'\x1b[6;30;41m{s}\x1b[0m'
 
 
-def _try_int(s: str) -> Union[int, str]:
-    # s.isnumeric() fails with -1
-    try:
-        return int(s)
-    except ValueError:
-        return s
-
-
-def _str_to_shape(string: str) -> Sequence[Union[int, str]]:
-    return tuple(_try_int(s.strip()) for s in string.split(','))
+def str_to_shape(string: str) -> Sequence[Union[int, str]]:
+    shape: List[Union[int, str]] = []
+    has_ellipsis = False
+    for s in string.split(','):
+        s = s.strip()
+        if s.endswith('...'):
+            if has_ellipsis:
+                raise RuntimeError('Each shape can have at most one \'...\'.'
+                                   f'Got {string}')
+            has_ellipsis = True
+            shape.append(s)
+        else:
+            try:
+                shape.append(int(s))
+            except ValueError:
+                shape.append(s)
+    return shape

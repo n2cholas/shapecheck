@@ -55,6 +55,29 @@ Input:
     Match:    Argument: d Expected Shape: (3, 'N') Actual Shape: (3, 6).
 ```
 
+This library also supports variadic dimensions. You can use '...' to indicate 0
+or more dimensions:
+
+```python
+@check_shapes('1,...,1', '...,1,1')
+def g(a, b):
+    pass
+
+g(np.ones((1, 3, 4, 1)), np.ones((2, 1, 1)))  # succeeds
+g(np.ones((1, 1)), np.ones((1, 1)))  # succeeds
+g(np.ones((2, 3, 4, 1)), np.ones((1, 1)))  # fails
+```
+
+The last statement fails with the following error:
+
+```bash
+shapecheck.shapecheck.ShapeError: in function g.
+Named Dimensions: {}.
+Input:
+    MisMatch: Argument: a Expected Shape: [1, '...', 1] Actual Shape: (2, 3, 4, 1).
+    Match:    Argument: b Expected Shape: ['...', 1, 1] Actual Shape: (1, 1).
+```
+
 ## Run Tests
 
 ```bash
@@ -92,8 +115,6 @@ format your code when you push to `main`.
 ## Planned Features
 
 - Support "PyTrees" (nested dicts/tuples/lists of arrays)
-- Support non-array inputs/outputs.
-- Support variadic dimensions (via `...`).
 - Provide context manager/switch to turn off shape checking.
 - Support recursive checking (i.e. if parent and child function
   use named dimension 'N', ensure they're the same).
