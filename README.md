@@ -47,7 +47,7 @@ f(np.ones((2, 6)), np.ones(5), np.ones(1), np.ones((3, 6)))  # fails
 The last statement throws a `ShapeError` with an informative message.
 
 ```bash
-shapecheck.shapecheck.ShapeError: in function f.
+shapecheck.exception.ShapeError: in function f.
 Named Dimensions: {'N': 6}.
 Input:
     Match:    Argument: a Expected Shape: (-1, 'N') Actual Shape: (2, 6).
@@ -75,11 +75,11 @@ g(np.ones((2, 3, 4, 1)), np.ones((1, 1)))  # fails
 The last statement fails with the following error:
 
 ```bash
-shapecheck.shapecheck.ShapeError: in function g.
+shapecheck.exception.ShapeError: in function g.
 Named Dimensions: {}.
 Input:
-    MisMatch: Argument: a Expected Shape: [1, '...', 1] Actual Shape: (2, 3, 4, 1).
-    Match:    Argument: b Expected Shape: ['...', 1, 1] Actual Shape: (1, 1).
+    MisMatch: Argument: a Expected Shape: (1, '...', 1) Actual Shape: (2, 3, 4, 1).
+    Match:    Argument: b Expected Shape: ('...', 1, 1) Actual Shape: (1, 1).
 ```
 
 You can also name variadic dimensions, to ensure that a contiguous sequence of
@@ -93,6 +93,33 @@ def h(a, b):
 h(np.ones((7, 1, 2)), np.ones((1, 2)))  # succeeds
 h(np.ones((6, 2)), np.ones((1, 1)))  # fails
 h(np.ones((6, 2)), np.ones((1)))  # fails
+```
+
+You can used nested lists/tuples/dictionaries as inputs, as demonstrated below:
+
+```python
+@check_shapes(('N,1', 'N'), '1,2', out={'key1': ('N,1', 'N'), 'key2': ('1,2')})
+def f(a, b):
+    return {'key1': (a[1], a[1]), 'key2': b.sum()}
+
+f((np.ones((7, 1)), np.ones((7,))), np.ones((1, 2)))  # fails
+```
+
+Which fails with the following error:
+
+```bash
+shapecheck.exception.ShapeError: in function f.
+Named Dimensions: {'N': 7}.
+Input:
+    Argument: a  Type: <class 'tuple'>
+        Match:    Ind: 0 Expected Shape: ('N', 1) Actual Shape: (7, 1).
+        Match:    Ind: 1 Expected Shape: ('N',) Actual Shape: (7,).
+    Match:    Argument: b Expected Shape: (1, 2) Actual Shape: (1, 2).
+Output:  Type: <class 'dict'>
+    Key: key1
+        MisMatch: Ind: 0 Expected Shape: ('N', 1) Actual Shape: (7,).
+        Match:    Ind: 1 Expected Shape: ('N',) Actual Shape: (7,).
+    MisMatch: Key: key2 Expected Shape: (1, 2) Actual Shape: ().
 ```
 
 ## Run Tests
@@ -131,7 +158,6 @@ format your code when you push to `main`.
 
 ## Planned Features
 
-- Support "PyTrees" (nested dicts/tuples/lists of arrays)
 - Provide context manager/switch to turn off shape checking.
 - Support recursive checking (i.e. if parent and child function
   use named dimension 'N', ensure they're the same).

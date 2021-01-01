@@ -2,51 +2,10 @@ import functools
 import inspect
 import itertools
 from operator import and_, attrgetter
-from typing import (Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Sequence,
-                    Tuple, Union)
+from typing import Any, Callable, Optional, Sequence, Union
 
-from .utils import _green_highlight, _red_highlight, map_nested, reduce_nested
-
-ShapeDef = Sequence[Union[str, int]]
-NamedDimMap = Dict[str, Union[int, Sequence[int]]]
-
-
-class _ShapeInfo(NamedTuple):
-    is_compatible: bool
-    expected_shape: Optional[ShapeDef] = None
-    actual_shape: Optional[Sequence[int]] = None
-    arg_name: Optional[str] = None
-
-
-class ShapeError(RuntimeError):
-    def __init__(self,
-                 fn_name: str,
-                 named_dims: NamedDimMap,
-                 input_info: Iterable[_ShapeInfo],
-                 output_info: Optional[_ShapeInfo] = None) -> None:
-        strings = [
-            f'in function {fn_name}.', f'Named Dimensions: {named_dims}.', 'Input:'
-        ]
-        for inp in input_info:
-            if inp.expected_shape:
-                info = (f'Argument: {inp.arg_name} '
-                        f'Expected Shape: {inp.expected_shape} '
-                        f'Actual Shape: {inp.actual_shape}.')
-                if inp.is_compatible:
-                    strings.append(_green_highlight(f'    Match:    {info}'))
-                else:
-                    strings.append(_red_highlight(f'    MisMatch: {info}'))
-            else:
-                strings.append(f'    Skipped:  Argument: {inp.arg_name}.')
-
-        if output_info:
-            strings.append('Output:')
-            strings.append(
-                _red_highlight(f'    MisMatch: Argument: {output_info.arg_name} '
-                               f'Expected Shape: {output_info.expected_shape} '
-                               f'Actual Shape: {output_info.actual_shape}.'))
-
-        super().__init__('\n'.join(strings))
+from .exception import ShapeError, _ShapeInfo
+from .utils import NamedDimMap, ShapeDef, map_nested, reduce_nested
 
 
 def is_compatible(shape: Sequence[int],
@@ -100,35 +59,47 @@ def is_compatible(shape: Sequence[int],
     return s_ind >= len(shape)  # false when last named variadic dimensions don't match
 
 
-def _check_item(arg: Any,
-                expected: Tuple[str, ShapeDef],
-                dim_dict: Optional[NamedDimMap] = None) -> _ShapeInfo:
-    arg_name, expected_shape = expected
-    if expected_shape is not None:
-        is_comp = is_compatible(arg.shape, expected_shape, dim_dict)
-        return _ShapeInfo(is_comp, expected_shape, arg.shape, arg_name)
-    else:
-        return _ShapeInfo(True, arg_name=arg_name)
+def str_to_shape(string: Optional[str]) -> Optional[ShapeDef]:
+    def gen():
+        has_ellipsis = False
+        for s in string.split(','):
+            s = s.strip()
+            if s.endswith('...'):
+                if has_ellipsis:
+                    raise RuntimeError('Each shape can have at most one \'...\'.'
+                                       f'Got {string}')
+                has_ellipsis = True
+                yield s
+            else:
+                # need try-catch because str.isnumeric() misses -1
+                try:
+                    yield int(s)
+                except ValueError:
+                    yield s
+
+    return ShapeDef(gen()) if string else None
 
 
 def check_shapes(*in_shapes, out=None) -> Callable[[Callable], Callable]:
-    in_shapes = [str_to_shape(in_s) if in_s else in_s  # type: ignore
-                 for in_s in in_shapes]  # type: ignore  # yapf: disable
-    if out is not None:
-        out = str_to_shape(out)
+    in_shapes = map_nested(str_to_shape, in_shapes)
+    out = map_nested(str_to_shape, out)
 
     def decorator(f: Callable) -> Callable:
         argspec = inspect.getfullargspec(f)
-        all_args = argspec.args + argspec.kwonlyargs
-        expected_shapes = list(zip(all_args, in_shapes))
+        full_argspec = argspec.args + argspec.kwonlyargs
+        expected_shapes = dict(zip(full_argspec, in_shapes))
 
         @functools.wraps(f)
         def inner(*args: Any):
             assert len(args) == len(in_shapes)
+            named_args = dict(zip(full_argspec, args))
             dim_dict: NamedDimMap = {}
             check_fn = functools.partial(_check_item, dim_dict=dim_dict)
 
-            input_info = map_nested(check_fn, args, expected_shapes)
+            input_info = map_nested(check_fn,
+                                    expected_shapes,
+                                    named_args,
+                                    stop_type=ShapeDef)
             nested_is_comp = map_nested(attrgetter('is_compatible'),
                                         input_info,
                                         stop_type=_ShapeInfo)
@@ -137,7 +108,7 @@ def check_shapes(*in_shapes, out=None) -> Callable[[Callable], Callable]:
 
             output = f(*args)
 
-            output_info = map_nested(check_fn, output, (None, out))
+            output_info = map_nested(check_fn, out, output, stop_type=ShapeDef)
             nested_is_comp = map_nested(attrgetter('is_compatible'),
                                         output_info,
                                         stop_type=_ShapeInfo)
@@ -151,20 +122,11 @@ def check_shapes(*in_shapes, out=None) -> Callable[[Callable], Callable]:
     return decorator
 
 
-def str_to_shape(string: str) -> ShapeDef:
-    shape: List[Union[int, str]] = []
-    has_ellipsis = False
-    for s in string.split(','):
-        s = s.strip()
-        if s.endswith('...'):
-            if has_ellipsis:
-                raise RuntimeError('Each shape can have at most one \'...\'.'
-                                   f'Got {string}')
-            has_ellipsis = True
-            shape.append(s)
-        else:
-            try:
-                shape.append(int(s))
-            except ValueError:
-                shape.append(s)
-    return shape
+def _check_item(expected_shape: ShapeDef,
+                arg: Any,
+                dim_dict: Optional[NamedDimMap] = None) -> _ShapeInfo:
+    if expected_shape is not None:
+        is_comp = is_compatible(arg.shape, expected_shape, dim_dict)
+        return _ShapeInfo(is_comp, expected_shape, arg.shape)
+    else:
+        return _ShapeInfo(True)

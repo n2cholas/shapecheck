@@ -1,0 +1,63 @@
+from typing import Dict, NamedTuple, Optional, Sequence
+
+from .utils import NamedDimMap, ShapeDef, _green_highlight, _red_highlight
+
+
+class _ShapeInfo(NamedTuple):
+    is_compatible: bool
+    expected_shape: Optional[ShapeDef] = None
+    actual_shape: Optional[Sequence[int]] = None
+
+    def __str__(self):
+        if self.expected_shape:
+            info = ('{} '
+                    f'Expected Shape: {self.expected_shape} '
+                    f'Actual Shape: {self.actual_shape}.')
+            if self.is_compatible:
+                return _green_highlight(f'Match:    {info}')
+            else:
+                return _red_highlight(f'MisMatch: {info}')
+        else:
+            return 'Skipped:  {}.'
+
+
+def nested_shape_info_to_strs(info, indent):
+    if isinstance(info, dict):
+        info_gen = ((f'Key: {k}', v) for k, v in info.items())
+    elif isinstance(info, (list, tuple)):
+        info_gen = ((f'Ind: {k}', v) for k, v in enumerate(info))
+
+    for k, v in info_gen:
+        if isinstance(v, _ShapeInfo):
+            yield indent * ' ' + str(v).format(k)
+        else:
+            yield indent * ' ' + k
+            yield from nested_shape_info_to_strs(v, indent=indent + 4)
+
+
+class ShapeError(RuntimeError):
+    def __init__(self,
+                 fn_name: str,
+                 named_dims: NamedDimMap,
+                 input_info: Dict[str, _ShapeInfo],
+                 output_info: Optional[_ShapeInfo] = None) -> None:
+        strings = [
+            f'in function {fn_name}.', f'Named Dimensions: {named_dims}.', 'Input:'
+        ]
+
+        for arg_name, info in input_info.items():
+            if isinstance(info, _ShapeInfo):
+                strings.append('    ' + str(info).format(f'Argument: {arg_name}'))
+            else:
+                strings.append(f'    Argument: {arg_name}  Type: {type(info)}')
+                strings.extend(nested_shape_info_to_strs(info, indent=8))
+
+        if output_info:
+            if isinstance(output_info, _ShapeInfo):
+                strings.append('Output:')
+                strings.append(str(output_info).format(''))
+            else:
+                strings.append(f'Output:  Type: {type(output_info)}')
+                strings.extend(nested_shape_info_to_strs(output_info, indent=4))
+
+        super().__init__('\n'.join(strings))

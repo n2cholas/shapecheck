@@ -103,3 +103,19 @@ def test_reduce_nested_initial():
     assert reduce_nested(lambda x, y: x and y, {}, True)
     assert reduce_nested(lambda x, y: x and y, tuple(), True)
     assert reduce_nested(lambda x, y: x and y, set(), True)
+
+
+def test_reduce_nested_stop_type():
+    class StopList(list):
+        pass
+
+    struct = [
+        {
+            'x': StopList([3, 3]),
+            11: StopList([2])
+        },
+        (StopList([[2]]), StopList([3, 3, 3])),
+        StopList([1]),
+    ]
+    reduced = reduce_nested(lambda x, y: x + y, struct, stop_type=StopList)
+    assert reduced == StopList([3, 3, 2, [2], 3, 3, 3, 1])
