@@ -6,6 +6,31 @@ from typing import Any, Callable, Dict, Optional, Tuple, cast
 from .exception import ShapeError, _ShapeInfo
 from .utils import NamedDimMap, NestedStruct, ShapeDef, map_nested, reduce_nested
 
+__all__ = [
+    'check_shapes', 'is_compatible', 'str_to_shape', 'set_checking_enabled',
+    'is_checking_enabled'
+]
+
+_CHECKING_ENABLED = True
+
+
+class set_checking_enabled:
+    def __init__(self, mode: bool) -> None:
+        global _CHECKING_ENABLED
+        self.prev = _CHECKING_ENABLED
+        _CHECKING_ENABLED = mode
+
+    def __enter__(self) -> None:
+        pass
+
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        global _CHECKING_ENABLED
+        _CHECKING_ENABLED = self.prev
+
+
+def is_checking_enabled() -> bool:
+    return _CHECKING_ENABLED
+
 
 def is_compatible(shape: Tuple[int],
                   expected_shape: ShapeDef,
@@ -80,6 +105,9 @@ def check_shapes(
 
         @functools.wraps(f)
         def inner(*args: Any) -> Any:
+            if not _CHECKING_ENABLED:
+                return f(*args)
+
             assert len(args) == len(in_shapes)
             named_args = dict(zip(full_argspec, args))
             dim_dict: NamedDimMap = {}

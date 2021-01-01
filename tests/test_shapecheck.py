@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
 
-from shapecheck import ShapeError, check_shapes, is_compatible, str_to_shape
+from shapecheck import (ShapeError, check_shapes, is_checking_enabled, is_compatible,
+                        set_checking_enabled, str_to_shape)
 
 from .utils import CaptureStdOut
 
@@ -226,3 +227,61 @@ def test_readme_nested_example():
 
     with pytest.raises(ShapeError):
         f((np.ones((7, 1)), np.ones((7,))), np.ones((1, 2)))
+
+
+def test_readme_set_checking_enabled():
+    from shapecheck import is_checking_enabled, set_checking_enabled
+
+    assert is_checking_enabled()
+    set_checking_enabled(False)
+    assert not is_checking_enabled()
+    set_checking_enabled(True)
+    assert is_checking_enabled()
+    with set_checking_enabled(False):
+        assert not is_checking_enabled()
+    assert is_checking_enabled()
+
+
+def test_set_checking_enabled():
+    @check_shapes('3', '4', out='2')
+    def f(x, y):
+        return x[:2]**2 + y[:2]**2
+
+    set_checking_enabled(False)
+    assert not is_checking_enabled()
+    f(np.array([1, 2, 3]), np.array([1, 2, 3, 4]))
+    f(np.array([1, 2, 3]), np.array([2, 3, 4]))
+
+    @check_shapes('3', '4', out='2')
+    def g(x, y):
+        return x[:2]**2 + y[:2]**2
+
+    set_checking_enabled(True)
+    assert is_checking_enabled()
+
+    with pytest.raises(ShapeError):
+        f(np.array([1, 2, 3]), np.array([2, 3, 4]))
+    with pytest.raises(ShapeError):
+        g(np.array([1, 2, 3]), np.array([2, 3, 4]))
+
+
+def test_set_checking_enabled_context():
+    @check_shapes('3', '4', out='2')
+    def f(x, y):
+        return x[:2]**2 + y[:2]**2
+
+    assert is_checking_enabled()
+    with set_checking_enabled(False):
+        assert not is_checking_enabled()
+        f(np.array([1, 2, 3]), np.array([1, 2, 3, 4]))
+        f(np.array([1, 2, 3]), np.array([2, 3, 4]))
+
+        @check_shapes('3', '4', out='2')
+        def g(x, y):
+            return x[:2]**2 + y[:2]**2
+
+    assert is_checking_enabled()
+    with pytest.raises(ShapeError):
+        f(np.array([1, 2, 3]), np.array([2, 3, 4]))
+    with pytest.raises(ShapeError):
+        g(np.array([1, 2, 3]), np.array([2, 3, 4]))

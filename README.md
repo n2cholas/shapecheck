@@ -122,6 +122,27 @@ Output:  Type: <class 'dict'>
     MisMatch: Key: key2 Expected Shape: (1, 2) Actual Shape: ().
 ```
 
+You can enable/disable shapechecking globally as shown below:
+
+```python
+from shapecheck import is_checking_enabled, set_checking_enabled
+
+assert is_checking_enabled()
+set_checking_enabled(False)
+assert not is_checking_enabled()
+set_checking_enabled(True)
+assert is_checking_enabled()
+```
+
+Or via a context manager:
+
+```python
+assert is_checking_enabled()
+with set_checking_enabled(False):
+    assert not is_checking_enabled()
+assert is_checking_enabled()
+```
+
 ## Run Tests
 
 ```bash
@@ -158,7 +179,6 @@ format your code when you push to `main`.
 
 ## Planned Features
 
-- Provide context manager/switch to turn off shape checking.
 - Support recursive checking (i.e. if parent and child function
   use named dimension 'N', ensure they're the same).
 
