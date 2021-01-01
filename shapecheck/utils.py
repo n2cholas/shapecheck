@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from functools import partial, reduce
 from operator import itemgetter
 from typing import Any, Callable, Dict, Optional, Tuple, Type, TypeVar, Union
