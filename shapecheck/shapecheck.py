@@ -1,8 +1,7 @@
 import functools
 import inspect
-import itertools
 from operator import and_, attrgetter
-from typing import Any, Callable, Optional, Sequence, Union
+from typing import Any, Callable, Optional, Sequence
 
 from .exception import ShapeError, _ShapeInfo
 from .utils import NamedDimMap, ShapeDef, map_nested, reduce_nested
@@ -11,7 +10,6 @@ from .utils import NamedDimMap, ShapeDef, map_nested, reduce_nested
 def is_compatible(shape: Sequence[int],
                   expected_shape: ShapeDef,
                   dim_dict: Optional[NamedDimMap] = None) -> bool:
-    # TODO: reduce complexity of function
     if dim_dict is None:
         dim_dict = {}
 
@@ -23,38 +21,29 @@ def is_compatible(shape: Sequence[int],
     if len(shape) < len(expected_shape) - int(has_ellipsis):
         return False
 
-    s_ind, es_ind = 0, 0
-    exp_dim: Union[int, str, Sequence[int]]  # TODO: add new vars to eliminate this
-    while es_ind < len(expected_shape):
-        if s_ind >= len(shape):
-            exp_dim = expected_shape[es_ind]
-            return isinstance(exp_dim, str) and exp_dim.endswith('...')  # type: ignore
-        dim, exp_dim = shape[s_ind], expected_shape[es_ind]
+    s_ind = 0
+    for exp_dim in expected_shape:
+        exp_dim = dim_dict.get(exp_dim, exp_dim)  # type: ignore
 
-        if isinstance(exp_dim, str):
-            if exp_dim in dim_dict:
-                exp_dim = dim_dict[exp_dim]
-            elif exp_dim.endswith('...'):
+        if exp_dim == -1:
+            pass
+        elif isinstance(exp_dim, int):
+            if exp_dim != shape[s_ind]:
+                return False
+        elif isinstance(exp_dim, tuple):
+            if exp_dim != shape[s_ind:s_ind + len(exp_dim)]:
+                return False
+            s_ind += len(exp_dim) - 1
+        elif isinstance(exp_dim, str):
+            if exp_dim.endswith('...'):
                 diff = len(shape) - len(expected_shape)
                 if exp_dim != '...':  # named variadic dimensions
                     dim_dict[exp_dim] = shape[s_ind:s_ind + diff + 1]
                 s_ind += diff
             else:
-                dim_dict[exp_dim] = dim
-                exp_dim = dim
-
-        skip_dim = exp_dim == -1 or exp_dim is None
-        if not skip_dim and isinstance(exp_dim, int) and exp_dim != dim:
-            return False
-        elif isinstance(exp_dim, (tuple, list)):
-            # can't check isinstance(exp_dim, Sequence) because str is a Sequence
-            shape_slice = shape[s_ind:s_ind + len(exp_dim)]
-            if any(e != s for e, s in itertools.zip_longest(exp_dim, shape_slice)):
-                return False
-            s_ind += len(exp_dim) - 1
+                dim_dict[exp_dim] = shape[s_ind]
 
         s_ind += 1
-        es_ind += 1
 
     return s_ind >= len(shape)  # false when last named variadic dimensions don't match
 
