@@ -1,29 +1,27 @@
 import functools
 import inspect
 from operator import and_, attrgetter
-from typing import Any, Callable, Optional, Sequence
+from typing import Any, Callable, Dict, Optional, Tuple, cast
 
 from .exception import ShapeError, _ShapeInfo
-from .utils import NamedDimMap, ShapeDef, map_nested, reduce_nested
+from .utils import NamedDimMap, NestedStruct, ShapeDef, map_nested, reduce_nested
 
 
-def is_compatible(shape: Sequence[int],
+def is_compatible(shape: Tuple[int],
                   expected_shape: ShapeDef,
                   dim_dict: Optional[NamedDimMap] = None) -> bool:
     if dim_dict is None:
         dim_dict = {}
 
-    has_ellipsis = any(
-        isinstance(s, str) and s.endswith('...')
-        for s in expected_shape)  # type: ignore
+    has_ellipsis = any(isinstance(s, str) and s.endswith('...') for s in expected_shape)
     if not has_ellipsis and len(shape) != len(expected_shape):
         return False
     if len(shape) < len(expected_shape) - int(has_ellipsis):
         return False
 
     s_ind = 0
-    for exp_dim in expected_shape:
-        exp_dim = dim_dict.get(exp_dim, exp_dim)  # type: ignore
+    for e in expected_shape:
+        exp_dim = dim_dict.get(cast(str, e), e)
 
         if exp_dim == -1:
             pass
@@ -69,8 +67,10 @@ def str_to_shape(string: Optional[str]) -> Optional[ShapeDef]:
     return ShapeDef(gen()) if string else None
 
 
-def check_shapes(*in_shapes, out=None) -> Callable[[Callable], Callable]:
-    in_shapes = map_nested(str_to_shape, in_shapes)
+def check_shapes(
+        *in_: NestedStruct[str],
+        out: Optional[NestedStruct[str]] = None) -> Callable[[Callable], Callable]:
+    in_shapes = cast(Tuple[NestedStruct[ShapeDef], ...], map_nested(str_to_shape, in_))
     out = map_nested(str_to_shape, out)
 
     def decorator(f: Callable) -> Callable:
@@ -79,16 +79,15 @@ def check_shapes(*in_shapes, out=None) -> Callable[[Callable], Callable]:
         expected_shapes = dict(zip(full_argspec, in_shapes))
 
         @functools.wraps(f)
-        def inner(*args: Any):
+        def inner(*args: Any) -> Any:
             assert len(args) == len(in_shapes)
             named_args = dict(zip(full_argspec, args))
             dim_dict: NamedDimMap = {}
             check_fn = functools.partial(_check_item, dim_dict=dim_dict)
 
-            input_info = map_nested(check_fn,
-                                    expected_shapes,
-                                    named_args,
-                                    stop_type=ShapeDef)
+            input_info = cast(
+                Dict[str, NestedStruct[_ShapeInfo]],
+                map_nested(check_fn, expected_shapes, named_args, stop_type=ShapeDef))
             nested_is_comp = map_nested(attrgetter('is_compatible'),
                                         input_info,
                                         stop_type=_ShapeInfo)

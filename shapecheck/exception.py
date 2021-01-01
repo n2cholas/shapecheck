@@ -1,14 +1,14 @@
-from typing import Dict, NamedTuple, Optional, Sequence
+from typing import Dict, Iterator, NamedTuple, Optional, Tuple
 
-from .utils import NamedDimMap, ShapeDef, _green_highlight, _red_highlight
+from .utils import NamedDimMap, NestedStruct, ShapeDef, _green_highlight, _red_highlight
 
 
 class _ShapeInfo(NamedTuple):
     is_compatible: bool
     expected_shape: Optional[ShapeDef] = None
-    actual_shape: Optional[Sequence[int]] = None
+    actual_shape: Optional[Tuple[int]] = None
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.expected_shape:
             info = ('{} '
                     f'Expected Shape: {self.expected_shape} '
@@ -21,7 +21,8 @@ class _ShapeInfo(NamedTuple):
             return 'Skipped:  {}.'
 
 
-def nested_shape_info_to_strs(info, indent):
+def nested_shape_info_to_strs(info: NestedStruct[_ShapeInfo],
+                              indent: int) -> Iterator[str]:
     if isinstance(info, dict):
         info_gen = ((f'Key: {k}', v) for k, v in info.items())
     elif isinstance(info, (list, tuple)):
