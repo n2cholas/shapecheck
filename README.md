@@ -46,7 +46,7 @@ f(np.ones((2, 6)), np.ones(5), np.ones(1), np.ones((3, 6)))  # fails
 
 The last statement throws a `ShapeError` with an informative message.
 
-```bash
+```
 shapecheck.exception.ShapeError: in function f.
 Named Dimensions: {'N': 6}.
 Input:
@@ -58,6 +58,43 @@ Input:
 
 Above, the named dimensions have one letter names, but they can be strings of
 any length.
+
+If you have a function with shapechecking that calls many other functions
+with shapechecking, you can optionally enforce that dimensions with the same
+letter name in the parent correspond to the same sized dimension in the children.
+That is, you can check that a function's input named dimensions match the same
+named dimensions of all functions higher in the call stack. For example:
+
+```python
+@check_shapes('N','M','O', out='N')
+def child_fn(x, y, z):
+    return x
+
+@check_shapes('M','N','R')
+def parent_fn_1(x, y, z):
+    return f(x, y, z)
+
+@check_shapes('M','N','R', match_callees=True)
+def parent_fn_2(x, y, z):
+    return f(x, y, z)
+
+parent_fn_1(np.ones(5), np.ones(6), np.ones(7))  # succeeds
+parent_fn_2(np.ones(5), np.ones(6), np.ones(7))  # fails
+```
+
+Here, we swapped 'N' and 'M'. So, `parent_fn_1` succeeds because the inputs are
+compatible for each individual function. But `parent_fn_2` fails because the
+named dimensions are inconsistent between the parent and child functions. The
+following error would be produced:
+
+```
+shapecheck.exception.ShapeError: in function child_fn.
+Named Dimensions: {'M': 5, 'N': 6, 'R': 7, 'O': 7}.
+Input:
+    MisMatch: Argument: x Expected Shape: ('N',) Actual Shape: (5,).
+    MisMatch: Argument: y Expected Shape: ('M',) Actual Shape: (6,).
+    Match:    Argument: z Expected Shape: ('O',) Actual Shape: (7,).
+```
 
 This library also supports variadic dimensions. You can use '...' to indicate 0
 or more dimensions:
@@ -74,7 +111,7 @@ g(np.ones((2, 3, 4, 1)), np.ones((1, 1)))  # fails
 
 The last statement fails with the following error:
 
-```bash
+```
 shapecheck.exception.ShapeError: in function g.
 Named Dimensions: {}.
 Input:
@@ -107,7 +144,7 @@ f((np.ones((7, 1)), np.ones((7,))), np.ones((1, 2)))  # fails
 
 Which fails with the following error:
 
-```bash
+```
 shapecheck.exception.ShapeError: in function f.
 Named Dimensions: {'N': 7}.
 Input:
@@ -176,11 +213,6 @@ git commit -am "Make change"  # adds modified files and commits
 
 If you don't use pre-commit, there is a GitHub action to automatically
 format your code when you push to `main`.
-
-## Planned Features
-
-- Support recursive checking (i.e. if parent and child function
-  use named dimension 'N', ensure they're the same).
 
 ## Design Decisions
 

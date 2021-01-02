@@ -39,7 +39,7 @@ def reduce_nested(f: Callable[[T, T], T],
                   data: NestedStruct[T],
                   initial: Optional[T] = None,
                   stop_type: Type = None) -> T:
-    # NOTE: Types should be:
+    # TODO: Update function so the signature can be:
     # (Callable[[T, S], T], NestedStruct[S], Optional[T], Type) -> T
     if stop_type and type(data) == stop_type:
         return data

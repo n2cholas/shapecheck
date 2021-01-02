@@ -285,3 +285,75 @@ def test_set_checking_enabled_context():
         f(np.array([1, 2, 3]), np.array([2, 3, 4]))
     with pytest.raises(ShapeError):
         g(np.array([1, 2, 3]), np.array([2, 3, 4]))
+
+
+def test_match_callees():
+    @check_shapes('N', 'M', 'O', out='N')
+    def f(x, y, z):
+        return x
+
+    @check_shapes('N', 'M', 'R', match_callees=True)
+    def g(x, y, z):
+        return f(x, y, z)
+
+    g(np.ones(5), np.ones(6), np.ones(7))
+
+
+def test_match_callees_error():
+    @check_shapes('N', 'M', 'O', out='N')
+    def f(x, y, z):
+        return x
+
+    @check_shapes('M', 'N', 'R', match_callees=True)
+    def g(x, y, z):
+        return f(x, y, z)
+
+    with pytest.raises(ShapeError):
+        g(np.ones(5), np.ones(6), np.ones(7))
+
+
+def test_match_callees_complex():
+    @check_shapes('a, v...', 'v...', out='v...')
+    def f(x, y):
+        return x.sum(0) + y
+
+    @check_shapes('v...')
+    def g(x):
+        return x.sum()
+
+    @check_shapes('a', match_callees=True)
+    def h(x):
+        a = np.ones((x.shape[0], 2, 3, 4))
+        b = np.ones((2, 3, 4))
+        f(a, b)
+        return g(np.ones((5, 4, 3)))
+
+    h(np.ones((8)))
+
+    @check_shapes('a', match_callees=True)
+    def h(x):
+        a = np.ones((x.shape[0] - 1, 2, 3, 4))
+        b = np.ones((2, 3, 4))
+        f(a, b)
+        return g(np.ones((5, 4, 3)))
+
+    with pytest.raises(ShapeError):
+        h(np.ones((8)))
+
+
+def test_match_callees_readme():
+    @check_shapes('N', 'M', 'O', out='N')
+    def child_fn(x, y, z):
+        return x
+
+    @check_shapes('M', 'N', 'R')
+    def parent_fn_1(x, y, z):
+        return child_fn(x, y, z)
+
+    @check_shapes('M', 'N', 'R', match_callees=True)
+    def parent_fn_2(x, y, z):
+        return child_fn(x, y, z)
+
+    parent_fn_1(np.ones(5), np.ones(6), np.ones(7))  # succeeds
+    with pytest.raises(ShapeError):
+        parent_fn_2(np.ones(5), np.ones(6), np.ones(7))  # fail
