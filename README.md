@@ -7,11 +7,11 @@
 Framework-agnostic library for checking array/tensor shapes at runtime.
 
 Finding the root of shape mismatches can be troublesome, especially with
-broadcasting rules and mutable arrays. Documenting shapes with comments can
-become stale as code evolves. This library aims to solve both of those problems
-by ensuring function pre and post shape expectations are met. The concise
-syntax for expressing shapes serves to document code as well, so new users can
-quickly understand what's going on.
+broadcasting rules and mutable arrays. Comments documenting shapes can easily
+become out of date as code evolves. This library aims to solve both of those
+problems by ensuring function input/output shape expectations are met. The
+concise syntax for expressing shapes serves to document code as well, so new
+users can quickly understand what's going on.
 
 With frameworks like JAX or TensorFlow, "runtime" is actually "compile" or
 "trace" time, so you don't pay any cost during execution. For frameworks like
@@ -23,7 +23,7 @@ pay a small overhead with synchronous, eager frameworks like numpy.
 From PyPI:
 
 ```bash
-pip install shapecheck
+pip install --upgrade shapecheck
 ```
 
 To install the latest version:
@@ -71,21 +71,21 @@ We specify that aux_info shouldn't be checked. Equivalently, we could've
 excluded it from the definition:
 
 ```python
-@check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, out_='N'): ...
+@check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, out_='N')
 ```
 
 or passed it as a positional argument.
 
 ```python
-@check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, None, out_='N'): ...
+@check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, None, out_='N')
 ```
 
 Finally, we specify the output shape should be `('N',)`. All non-input shape
 arguments to `check_shape` have an underscore after them so they don't
 conflict with the decorated function's arguments.
 
-If you have a function with shapechecking that calls many other functions
-with shapechecking, you can optionally enforce that dimensions with the same
+If you have a function with shape-checking that calls many other functions
+with shape-checking, you can optionally enforce that dimensions with the same
 letter name in the parent correspond to the same sized dimension in the children.
 That is, you can check that a function's input named dimensions match the same
 named dimensions of all functions higher in the call stack. For example:
@@ -178,3 +178,6 @@ with set_checking_enabled(False):
     assert not is_checking_enabled()
 assert is_checking_enabled()
 ```
+
+If you have any questions or issues with the library, please raise an issue on
+[GitHub](https://github.com/n2cholas/shapecheck/issues). Hope this helps!
