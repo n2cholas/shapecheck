@@ -19,28 +19,23 @@ def find_version(*file_paths):
     raise RuntimeError('Unable to find version string.')
 
 
-readme = read('README.md')
-
-VERSION = find_version('shapecheck', '__init__.py')
-
-requirements = []
-
 setup(
     # Metadata
     name='shapecheck',
-    version=VERSION,
+    version=find_version('shapecheck', '__init__.py'),
     author='Nicholas Vadivelu',
     author_email='nicholas.vadivelu@gmail.com',
     url='https://github.com/n2cholas/shapecheck',
     description='Framework-agnostic library for checking array shapes at runtime.',
     long_description_content_type='text/markdown',
-    long_description=readme,
+    long_description=read('README.md'),
     license='MIT',
     # Package info
     packages=find_packages(exclude=(
         'tests',
         'tests.*',
     )),
+    package_data={'shapecheck': ['py.typed']},
     zip_safe=True,
-    install_requires=requirements,
+    install_requires=[],
 )
