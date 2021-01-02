@@ -1,7 +1,7 @@
 import functools
 import inspect
 from operator import and_, attrgetter
-from typing import Any, Callable, Dict, Optional, Set, Tuple, Union, cast
+from typing import Any, Callable, Dict, Optional, Sequence, Set, Tuple, Union, cast
 
 from .exception import ShapeError, _ShapeInfo
 from .utils import NamedDimMap, NestedStruct, ShapeDef, map_nested, reduce_nested
@@ -79,34 +79,33 @@ def str_to_shape(string: Optional[str]) -> Optional[ShapeDef]:
     return ShapeDef(gen()) if string else None
 
 
-def check_shapes(*in_: NestedStruct[str],
-                 out: Optional[NestedStruct[str]] = None,
-                 match_callees: bool = False) -> Callable[[Callable], Callable]:
-    in_shapes = cast(Tuple[NestedStruct[ShapeDef], ...], map_nested(str_to_shape, in_))
-    out = map_nested(str_to_shape, out)
+def check_shapes(*in_args: NestedStruct[str],
+                 out_: Optional[NestedStruct[str]] = None,
+                 match_callees_: bool = False,
+                 **in_kws: NestedStruct[str]) -> Callable[[Callable], Callable]:
+    in_args, in_kws = map_nested(str_to_shape, (in_args, in_kws))  # type: ignore
+    out_ = map_nested(str_to_shape, out_)
 
     def decorator(f: Callable) -> Callable:
-        argspec = inspect.getfullargspec(f)
-        full_argspec = argspec.args + argspec.kwonlyargs
-        expected_shapes = dict(zip(full_argspec, in_shapes))
+        arglist = cast(Sequence[str], inspect.signature(f).parameters.keys())
+        expected_shapes = _params_to_dict(in_args, in_kws, arglist)
 
         @functools.wraps(f)
-        def inner(*args: Any) -> Any:
-            assert len(args) == len(in_shapes)
+        def inner(*args: Any, **kwargs: Any) -> Any:
+            named_args = _params_to_dict(args, kwargs, arglist)
 
             if not _CHECKING_ENABLED:
                 return f(*args)
 
-            if ((match_callees or _MATCH_CALLEES)
+            if ((match_callees_ or _MATCH_CALLEES)
                     and not inner.named_dim_set):  # type: ignore
                 # TODO: get rid of map hack and fix reduce_nested
                 collect_fn = functools.partial(
                     _collect_names, named_dim_set=inner.named_dim_set)  # type: ignore
-                map_nested(collect_fn, (in_shapes, out))
+                map_nested(collect_fn, (expected_shapes, out_))
 
             with _update_global_named_dim_info(inner.named_dim_set):  # type: ignore
-                named_args = dict(zip(full_argspec, args))
-                dim_dict: NamedDimMap = _DIM_DICT if match_callees or _DIM_DICT else {}
+                dim_dict: NamedDimMap = _DIM_DICT if match_callees_ or _DIM_DICT else {}
                 check_fn = functools.partial(_check_item, dim_dict=dim_dict)
 
                 input_info = cast(
@@ -121,10 +120,10 @@ def check_shapes(*in_: NestedStruct[str],
                 if not reduce_nested(and_, nested_is_comp, initial=True):
                     raise ShapeError(f.__name__, dim_dict, input_info)
 
-                with _match_callees_enabled(match_callees or _MATCH_CALLEES):
-                    output = f(*args)
+                with _match_callees_enabled(match_callees_ or _MATCH_CALLEES):
+                    output = f(*args, **kwargs)
 
-                output_info = map_nested(check_fn, out, output, stop_type=ShapeDef)
+                output_info = map_nested(check_fn, out_, output, stop_type=ShapeDef)
                 nested_is_comp = map_nested(attrgetter('is_compatible'),
                                             output_info,
                                             stop_type=_ShapeInfo)
@@ -200,3 +199,14 @@ def _check_item(expected_shape: ShapeDef,
 def _collect_names(x: Optional[Union[str, int]], named_dim_set: Set[str]) -> None:
     if isinstance(x, str) and x != '...':
         named_dim_set.add(x)
+
+
+def _params_to_dict(args: Tuple[Any, ...], kwargs: Dict[str, Any],
+                    arglist: Sequence[str]):
+    assert len(args) <= len(arglist)
+    d = dict(zip(arglist, args))
+    d.update(kwargs)
+    for k in arglist:
+        if k not in d:
+            d[k] = None
+    return d

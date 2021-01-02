@@ -8,7 +8,7 @@ from .utils import CaptureStdOut
 
 
 def test_basic():
-    @check_shapes('3', '4', out='2')
+    @check_shapes('3', '4', out_='2')
     def f(x, y):
         return x[:2]**2 + y[:2]**2
 
@@ -18,7 +18,7 @@ def test_basic():
 
 
 def test_named_dim():
-    @check_shapes('3,N', 'N', out='1,N')
+    @check_shapes('3,N', 'N', out_='1,N')
     def f(x, y):
         return (x + y).sum(0, keepdims=True)
 
@@ -28,7 +28,7 @@ def test_named_dim():
 
 
 def test_named_dim_one_arg():
-    @check_shapes('A,A,N', out='N')
+    @check_shapes('A,A,N', out_='N')
     def f(x):
         return x.sum((0, 1))
 
@@ -38,7 +38,7 @@ def test_named_dim_one_arg():
 
 
 def test_any_dim():
-    @check_shapes('N,-1', out='N,1')
+    @check_shapes('N,-1', out_='N,1')
     def f(x):
         return x.sum(-1, keepdims=True)
 
@@ -62,7 +62,7 @@ def test_no_stdout():
     # Prevent pushing debug messages.
     with CaptureStdOut() as output:
 
-        @check_shapes('3,A,A,N', out='N')
+        @check_shapes('3,A,A,N', out_='N')
         def f(x):
             return x.sum((0, 2, 1))
 
@@ -78,7 +78,7 @@ def test_readme_example():
 
     from shapecheck import check_shapes
 
-    @check_shapes('-1,N', 'N', None, '3,N', out='3,N')
+    @check_shapes('-1,N', 'N', None, '3,N', out_='3,N')
     def f(a, b, c, d):
         return (a + b).sum(0, keepdims=True) + d
 
@@ -202,7 +202,7 @@ def test_bad_named_variadic_shapes(e_shape1, e_shape2, shape1, shape2):
 
 
 def test_incompatible_output():
-    @check_shapes(out='1,1')
+    @check_shapes(out_='1,1')
     def f():
         return np.ones((1,))
 
@@ -211,7 +211,7 @@ def test_incompatible_output():
 
 
 def test_nested_structs():
-    @check_shapes(('N,1', 'N'), '1,2', out={'one': ('N,1', 'N'), 'two': ('1,2')})
+    @check_shapes(('N,1', 'N'), '1,2', out_={'one': ('N,1', 'N'), 'two': ('1,2')})
     def f(one, two):
         return {'one': one, 'two': two}
 
@@ -221,7 +221,7 @@ def test_nested_structs():
 
 
 def test_readme_nested_example():
-    @check_shapes(('N,1', 'N'), '1,2', out={'one': ('N,1', 'N'), 'two': ('1,2')})
+    @check_shapes(('N,1', 'N'), '1,2', out_={'one': ('N,1', 'N'), 'two': ('1,2')})
     def f(one, two):
         return {'one': (one[1], one[1]), 'two': two.sum()}
 
@@ -243,7 +243,7 @@ def test_readme_set_checking_enabled():
 
 
 def test_set_checking_enabled():
-    @check_shapes('3', '4', out='2')
+    @check_shapes('3', '4', out_='2')
     def f(x, y):
         return x[:2]**2 + y[:2]**2
 
@@ -252,7 +252,7 @@ def test_set_checking_enabled():
     f(np.array([1, 2, 3]), np.array([1, 2, 3, 4]))
     f(np.array([1, 2, 3]), np.array([2, 3, 4]))
 
-    @check_shapes('3', '4', out='2')
+    @check_shapes('3', '4', out_='2')
     def g(x, y):
         return x[:2]**2 + y[:2]**2
 
@@ -266,7 +266,7 @@ def test_set_checking_enabled():
 
 
 def test_set_checking_enabled_context():
-    @check_shapes('3', '4', out='2')
+    @check_shapes('3', '4', out_='2')
     def f(x, y):
         return x[:2]**2 + y[:2]**2
 
@@ -276,7 +276,7 @@ def test_set_checking_enabled_context():
         f(np.array([1, 2, 3]), np.array([1, 2, 3, 4]))
         f(np.array([1, 2, 3]), np.array([2, 3, 4]))
 
-        @check_shapes('3', '4', out='2')
+        @check_shapes('3', '4', out_='2')
         def g(x, y):
             return x[:2]**2 + y[:2]**2
 
@@ -288,11 +288,11 @@ def test_set_checking_enabled_context():
 
 
 def test_match_callees():
-    @check_shapes('N', 'M', 'O', out='N')
+    @check_shapes('N', 'M', 'O', out_='N')
     def f(x, y, z):
         return x
 
-    @check_shapes('N', 'M', 'R', match_callees=True)
+    @check_shapes('N', 'M', 'R', match_callees_=True)
     def g(x, y, z):
         return f(x, y, z)
 
@@ -300,11 +300,11 @@ def test_match_callees():
 
 
 def test_match_callees_error():
-    @check_shapes('N', 'M', 'O', out='N')
+    @check_shapes('N', 'M', 'O', out_='N')
     def f(x, y, z):
         return x
 
-    @check_shapes('M', 'N', 'R', match_callees=True)
+    @check_shapes('M', 'N', 'R', match_callees_=True)
     def g(x, y, z):
         return f(x, y, z)
 
@@ -313,7 +313,7 @@ def test_match_callees_error():
 
 
 def test_match_callees_complex():
-    @check_shapes('a, v...', 'v...', out='v...')
+    @check_shapes('a, v...', 'v...', out_='v...')
     def f(x, y):
         return x.sum(0) + y
 
@@ -321,7 +321,7 @@ def test_match_callees_complex():
     def g(x):
         return x.sum()
 
-    @check_shapes('a', match_callees=True)
+    @check_shapes('a', match_callees_=True)
     def h(x):
         a = np.ones((x.shape[0], 2, 3, 4))
         b = np.ones((2, 3, 4))
@@ -330,7 +330,7 @@ def test_match_callees_complex():
 
     h(np.ones((8)))
 
-    @check_shapes('a', match_callees=True)
+    @check_shapes('a', match_callees_=True)
     def h(x):
         a = np.ones((x.shape[0] - 1, 2, 3, 4))
         b = np.ones((2, 3, 4))
@@ -342,7 +342,7 @@ def test_match_callees_complex():
 
 
 def test_match_callees_readme():
-    @check_shapes('N', 'M', 'O', out='N')
+    @check_shapes('N', 'M', 'O', out_='N')
     def child_fn(x, y, z):
         return x
 
@@ -350,10 +350,32 @@ def test_match_callees_readme():
     def parent_fn_1(x, y, z):
         return child_fn(x, y, z)
 
-    @check_shapes('M', 'N', 'R', match_callees=True)
+    @check_shapes('M', 'N', 'R', match_callees_=True)
     def parent_fn_2(x, y, z):
         return child_fn(x, y, z)
 
     parent_fn_1(np.ones(5), np.ones(6), np.ones(7))  # succeeds
     with pytest.raises(ShapeError):
         parent_fn_2(np.ones(5), np.ones(6), np.ones(7))  # fail
+
+
+@pytest.mark.parametrize('cs_args, cs_kwargs, f_args, f_kwargs', [
+    (('N', 'M', 'O', 'P'), {}, (1, 2, 3), {}),
+    (('N', 'M', 'O', 'P'), {}, (1, 2), {'c': 3}),
+    (('N', 'M', 'O',), {}, (1, 2, 3), {}),
+    (('N', 'M'), {}, (1, 2), {'c': 3}),
+    (('N', 'M', 'O', 'P'), {}, (1,), {'c': 3, 'b': 2}),
+    (('N', 'M', 'O'), {'d': 'P'}, (1, 2, 3), {}),
+    (('N', 'M'), {'c': 'O', 'd': 'P'}, (1, 2, 3), {}),
+    (('N',), {'b': 'M', 'c': 'O', 'd': 'P'}, (1, 2), {'c': 3}),
+    ((), {'a': 'N', 'b': 'M', 'c': 'O', 'd': 'P'}, (1, 2, 3), {}),
+    ((), {'a': 'N', 'b': 'M', 'c': 'O', 'd': 'P'}, (1, 2), {'c': 3}),
+])  # yapf: disable
+def test_check_shapes_signature(cs_args, cs_kwargs, f_args, f_kwargs):
+    # TODO: write more rigorous shape signature tests
+    @check_shapes(*cs_args, **cs_kwargs)
+    def f(a, b, c, *, d):
+        pass
+
+    f_kwargs = {k: np.ones(v) for k, v in f_kwargs.items()}
+    f(*map(np.ones, f_args), d=np.ones(4), **f_kwargs)

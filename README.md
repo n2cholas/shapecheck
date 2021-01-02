@@ -30,13 +30,13 @@ pip install --upgrade git+https://github.com/n2cholas/shapecheck.git
 import numpy as np
 from shapecheck import check_shapes
 
-@check_shapes('-1,N', 'N', None, '3,N', out='3,N')
+@check_shapes('-1,N', 'N', None, '3,N', out_='3,N')
 def f(a, b, c, d):
     # a must be rank 2, where the first dim can be anything.
     # b must be rank 1, where the first dim must be N (a's second dim)
     # c will not be checked
     # d must be rank 2, where the first dim is 3, the second dim is N
-    # since we specified `out=`, the output shape will be checked as well
+    # since we specified `out_=`, the output shape will be checked as well
     return (a + b).sum(0, keepdims=True) + d
 
 f(np.ones((7, 5)), np.ones(5), 'anything', np.ones((3, 5)))  # succeeds
@@ -66,17 +66,17 @@ That is, you can check that a function's input named dimensions match the same
 named dimensions of all functions higher in the call stack. For example:
 
 ```python
-@check_shapes('N','M','O', out='N')
+@check_shapes('N', 'M', 'O', out_='N')
 def child_fn(x, y, z):
     return x
 
-@check_shapes('M','N','R')
+@check_shapes('M', 'N', 'R')
 def parent_fn_1(x, y, z):
-    return f(x, y, z)
+    return child_fn(x, y, z)
 
-@check_shapes('M','N','R', match_callees=True)
+@check_shapes('M', 'N', 'R', match_callees_=True)
 def parent_fn_2(x, y, z):
-    return f(x, y, z)
+    return child_fn(x, y, z)
 
 parent_fn_1(np.ones(5), np.ones(6), np.ones(7))  # succeeds
 parent_fn_2(np.ones(5), np.ones(6), np.ones(7))  # fails
@@ -135,7 +135,7 @@ h(np.ones((6, 2)), np.ones((1)))  # fails
 You can used nested lists/tuples/dictionaries as inputs, as demonstrated below:
 
 ```python
-@check_shapes(('N,1', 'N'), '1,2', out={'key1': ('N,1', 'N'), 'key2': ('1,2')})
+@check_shapes(('N,1', 'N'), '1,2', out_={'key1': ('N,1', 'N'), 'key2': ('1,2')})
 def f(a, b):
     return {'key1': (a[1], a[1]), 'key2': b.sum()}
 
