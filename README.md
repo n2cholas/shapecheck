@@ -91,34 +91,35 @@ That is, you can check that a function's input named dimensions match the same
 named dimensions of all functions higher in the call stack. For example:
 
 ```python
-@check_shapes('N', 'M', 'O', out_='N')
-def child_fn(x, y, z):
-    return x
+@check_shapes('M', 'N', 'O', out_='M')
+def child_fn(a, b, c):
+    return a
 
 @check_shapes('M', 'N', 'R')
 def parent_fn_1(x, y, z):
-    return child_fn(x, y, z)
+    return child_fn(y, x, z)
 
 @check_shapes('M', 'N', 'R', match_callees_=True)
 def parent_fn_2(x, y, z):
-    return child_fn(x, y, z)
+    return child_fn(y, x, z)
 
 parent_fn_1(np.ones(5), np.ones(6), np.ones(7))  # succeeds
 parent_fn_2(np.ones(5), np.ones(6), np.ones(7))  # fails
 ```
 
-Here, we swapped 'N' and 'M'. So, `parent_fn_1` succeeds because the inputs are
-compatible for each individual function. But `parent_fn_2` fails because the
-named dimensions are inconsistent between the parent and child functions. The
+Here, we (accidentally) swapped `x` and `y` when calling `child_fn`.
+`parent_fn_1` succeeds because the inputs are compatible when considering the
+named dimensions for `child_fn` alone. But `parent_fn_2` fails because the
+named dimensions are inconsistent between the parent and child functions.  The
 following error would be produced:
 
 ```
 shapecheck.exception.ShapeError: in function child_fn.
 Named Dimensions: {'M': 5, 'N': 6, 'R': 7, 'O': 7}.
 Input:
-    MisMatch: Argument: x Expected Shape: ('N',) Actual Shape: (5,).
-    MisMatch: Argument: y Expected Shape: ('M',) Actual Shape: (6,).
-    Match:    Argument: z Expected Shape: ('O',) Actual Shape: (7,).
+    MisMatch: Argument: a Expected Shape: ('M',) Actual Shape: (6,).
+    MisMatch: Argument: b Expected Shape: ('N',) Actual Shape: (5,).
+    Match:    Argument: c Expected Shape: ('O',) Actual Shape: (7,).
 ```
 
 This library also supports variadic dimensions. You can use '...' to indicate 0

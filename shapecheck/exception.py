@@ -42,7 +42,7 @@ class ShapeError(RuntimeError):
         if output_info:
             if isinstance(output_info, _ShapeInfo):
                 strings.append('Output:')
-                strings.append(str(output_info).format(''))
+                strings.append('    ' + str(output_info).format(''))
             else:
                 strings.append(f'Output:  Type: {type(output_info)}')
                 strings.extend(_nested_shape_info_to_strs(output_info, indent=4))

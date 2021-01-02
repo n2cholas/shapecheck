@@ -344,21 +344,21 @@ def test_match_callees_complex():
 
 
 def test_match_callees_readme():
-    @check_shapes('N', 'M', 'O', out_='N')
-    def child_fn(x, y, z):
-        return x
+    @check_shapes('M', 'N', 'O', out_='M')
+    def child_fn(a, b, c):
+        return a
 
     @check_shapes('M', 'N', 'R')
     def parent_fn_1(x, y, z):
-        return child_fn(x, y, z)
+        return child_fn(y, x, z)
 
     @check_shapes('M', 'N', 'R', match_callees_=True)
     def parent_fn_2(x, y, z):
-        return child_fn(x, y, z)
+        return child_fn(y, x, z)
 
     parent_fn_1(np.ones(5), np.ones(6), np.ones(7))  # succeeds
     with pytest.raises(ShapeError):
-        parent_fn_2(np.ones(5), np.ones(6), np.ones(7))  # fail
+        parent_fn_2(np.ones(5), np.ones(6), np.ones(7))  # fails
 
 
 @pytest.mark.parametrize('cs_args, cs_kwargs, f_args, f_kwargs', [
