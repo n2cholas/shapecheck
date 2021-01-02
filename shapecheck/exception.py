@@ -1,6 +1,6 @@
 from typing import Dict, Iterator, NamedTuple, Optional, Tuple
 
-from .utils import NamedDimMap, NestedStruct, ShapeDef, _green_highlight, _red_highlight
+from .utils import NamedDimMap, NestedStruct, ShapeDef, _style_text
 
 
 class _ShapeInfo(NamedTuple):
@@ -14,9 +14,9 @@ class _ShapeInfo(NamedTuple):
                     f'Expected Shape: {self.expected_shape} '
                     f'Actual Shape: {self.actual_shape}.')
             if self.is_compatible:
-                return _green_highlight(f'Match:    {info}')
+                return _style_text(f'Match:    {info}', 'green')
             else:
-                return _red_highlight(f'MisMatch: {info}')
+                return _style_text(f'MisMatch: {info}', 'red')
         else:
             return 'Skipped:  {}.'
 

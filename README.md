@@ -20,6 +20,14 @@ pay a small overhead with synchronous, eager frameworks like numpy.
 
 ## Install Library
 
+From PyPI:
+
+```bash
+pip install shapecheck
+```
+
+To install the latest version:
+
 ```bash
 pip install --upgrade git+https://github.com/n2cholas/shapecheck.git
 ```
@@ -169,37 +177,3 @@ with set_checking_enabled(False):
     assert not is_checking_enabled()
 assert is_checking_enabled()
 ```
-
-## Run Tests
-
-```bash
-git clone https://github.com/n2cholas/shapecheck.git
-cd shapecheck
-pip install --upgrade pip setuptools
-python setup.py develop
-pip install -r requirements-dev.txt
-pytest tests/ -vvv --cov shapecheck --cov-report term-missing
-```
-
-## Contributing
-
-You can optionally use `pre-commit` to fix formatting and other issues.
-`pre-commit` is in the `requirement-dev.txt`, so it should already be
-installed. Set it up via:
-
-```bash
-pre-commit install
-```
-
-Then, whenever you commit:
-
-```bash
-git add .
-git commit -m "Make change"
-# files may be modified by the pre-commit hooks or may need modification
-# fix the files that need to be fixed, then
-git commit -am "Make change"  # adds modified files and commits
-```
-
-If you don't use pre-commit, there is a GitHub action to automatically
-format your code when you push to `main`.

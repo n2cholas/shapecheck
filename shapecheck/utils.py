@@ -80,9 +80,17 @@ def iterate_nested(data: NestedStruct, stop_type: Optional[Type] = None) -> Iter
         yield data
 
 
-def _green_highlight(s):
-    return f'\x1b[6;30;42m{s}\x1b[0m'
+_STYLE_DICT = {
+    'blue': '\033[94m',
+    'bold': '\033[1m',
+    'cyan': '\033[96m',
+    'green': '\033[92m',
+    'header': '\033[95m',
+    'red': '\033[91m',
+    'underline': '\033[4m',
+    'yellow': '\033[93m',
+}
 
 
-def _red_highlight(s):
-    return f'\x1b[6;30;41m{s}\x1b[0m'
+def _style_text(string, style):
+    return f'{_STYLE_DICT[style]}{string}\033[0m'
