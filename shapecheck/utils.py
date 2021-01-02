@@ -1,10 +1,12 @@
 from operator import itemgetter
 from typing import Any, Callable, Dict, Iterator, Optional, Tuple, Type, TypeVar, Union
 
+NamedDimMap = Dict[str, Union[int, Tuple[int, ...]]]
+
 T = TypeVar('T')
 NestedStruct = Union[T, Any]
+# NOTE: The definition below is more accurate, but requires recursive type-checking.
 # NestedStruct = Union[NestedStruct[T], T, Dict[Any, T], List[T], Set[T], Tuple[T,...]]
-NamedDimMap = Dict[str, Union[int, Tuple[int, ...]]]
 
 
 class ShapeDef(Tuple[Union[str, int], ...]):
@@ -80,17 +82,16 @@ def iterate_nested(data: NestedStruct, stop_type: Optional[Type] = None) -> Iter
         yield data
 
 
-_STYLE_DICT = {
-    'blue': '\033[94m',
-    'bold': '\033[1m',
-    'cyan': '\033[96m',
-    'green': '\033[92m',
-    'header': '\033[95m',
-    'red': '\033[91m',
-    'underline': '\033[4m',
-    'yellow': '\033[93m',
-}
+class _styles:
+    BLUE = '\033[94m'
+    BOLD = '\033[1m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    HEADER = '\033[95m'
+    RED = '\033[91m'
+    UNDERLINE = '\033[4m'
+    YELLOW = '\033[93m'
 
 
-def _style_text(string, style):
-    return f'{_STYLE_DICT[style]}{string}\033[0m'
+def _style_text(string: str, style: str):
+    return f'{style}{string}\033[0m'

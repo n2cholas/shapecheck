@@ -132,7 +132,9 @@ def test_shape_to_str(string, shape):
         assert a == b, f'Expected: {shape} Got: {result}'
 
 
-@pytest.mark.parametrize('string', ['...,...,...', 'a,...,b,...', '...,1,...'])
+@pytest.mark.parametrize('string', [
+    '...,...,...', 'a,...,b,...', '...,1,...', (1, 2), 3, 4.0, [5.0], ['1,2'], ('1,2',)
+])
 def test_shape_to_str_error(string):
     with pytest.raises(RuntimeError):
         str_to_shape(string)

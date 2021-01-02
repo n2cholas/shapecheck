@@ -1,12 +1,12 @@
 from typing import Dict, Iterator, NamedTuple, Optional, Tuple
 
-from .utils import NamedDimMap, NestedStruct, ShapeDef, _style_text
+from .utils import NamedDimMap, NestedStruct, ShapeDef, _style_text, _styles
 
 
 class _ShapeInfo(NamedTuple):
     is_compatible: bool
     expected_shape: Optional[ShapeDef] = None
-    actual_shape: Optional[Tuple[int]] = None
+    actual_shape: Optional[Tuple[int, ...]] = None
 
     def __str__(self) -> str:
         if self.expected_shape:
@@ -14,9 +14,9 @@ class _ShapeInfo(NamedTuple):
                     f'Expected Shape: {self.expected_shape} '
                     f'Actual Shape: {self.actual_shape}.')
             if self.is_compatible:
-                return _style_text(f'Match:    {info}', 'green')
+                return _style_text(f'Match:    {info}', _styles.GREEN)
             else:
-                return _style_text(f'MisMatch: {info}', 'red')
+                return _style_text(f'MisMatch: {info}', _styles.RED)
         else:
             return 'Skipped:  {}.'
 

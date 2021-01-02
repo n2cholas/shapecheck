@@ -1,6 +1,6 @@
 import functools
 import inspect
-from typing import Any, Callable, Dict, Optional, Sequence, Set, Tuple, cast
+from typing import Any, Callable, Dict, Optional, Sequence, Set, Tuple, TypeVar, cast
 
 from .exception import ShapeError, _ShapeInfo
 from .utils import NamedDimMap, NestedStruct, ShapeDef, iterate_nested, map_nested
@@ -10,14 +10,19 @@ __all__ = [
     'is_checking_enabled'
 ]
 
-# TODO: make these thread local
+# TODO: Make these thread-safe. When a thread is spawned, it should have a copy
+# of the version of these variables. If we use threading.local() for this,
+# every child thread would have a freshly initialized version of these
+# variables, not a copy of the parent's. This would lead to incorrect behaviour
+# if, for example, a new thread is spawned when checking is disabled (new
+# thread would have checking enabled).
 _CHECKING_ENABLED = True
 _MATCH_CALLEES = False
 _DIM_DICT: NamedDimMap = {}
 _NAME_USE_CNT: Dict[str, int] = {}
 
 
-def is_compatible(shape: Tuple[int],
+def is_compatible(shape: Tuple[int, ...],
                   expected_shape: ShapeDef,
                   dim_dict: Optional[NamedDimMap] = None) -> bool:
     """Check whether shape is compatible with expected_shape.
@@ -97,7 +102,13 @@ def str_to_shape(string: Optional[str]) -> Optional[ShapeDef]:
                 except ValueError:
                     yield s
 
-    return ShapeDef(gen()) if string else None
+    if isinstance(string, str):
+        return ShapeDef(gen())
+    elif string is None:
+        return None
+    else:
+        raise RuntimeError('check_shapes shape specifications must be str or None. '
+                           f'Got: {string}')
 
 
 def check_shapes(
@@ -111,6 +122,12 @@ def check_shapes(
     names as the decorated function. Unspecified arguments or arguments
     explicitly given an expected shape of None will not be checked.
 
+    Using `match_callees_=True` makes this method thread-unsafe due to the use
+    of globals.  You most likely don't want to use Python threads with
+    array/tensor processing code (which this library was designed for), as it
+    provides no performance benefit outside of I/O. You likely want to use
+    multiprocessing for performance, which is safe with this library.
+
     Args:
         *in_args: nested dict/list/tuples of strings describing the allowed
             shapes for the decorated function. the nesting structure should match
@@ -119,7 +136,8 @@ def check_shapes(
             output of the decorated function.
         match_callees_: whether or not the named dimensions/variadic dimensions
             of functions called by the decorated functions should match the named
-            dimensions of the decorated function.
+            dimensions of the decorated function. Setting this option to `True`
+            makes this method thread un-safe (due to the use of globals).
         **in_kws: same as *in_args but key word arguments.
 
     Returns:
@@ -136,7 +154,7 @@ def check_shapes(
         @functools.wraps(f)
         def inner(*args: Any, **kwargs: Any) -> Any:
             if not _CHECKING_ENABLED:
-                return f(*args)
+                return f(*args, **kwargs)
 
             named_args = _params_to_named_params(args, kwargs, arglist)
 
@@ -231,18 +249,23 @@ class _update_global_named_dim_info:
                 _NAME_USE_CNT.pop(name)
 
 
-def _check_item(expected_shape: ShapeDef,
+def _check_item(expected_shape: Optional[ShapeDef],
                 arg: Any,
                 dim_dict: Optional[NamedDimMap] = None) -> _ShapeInfo:
-    if expected_shape is not None:
-        is_comp = is_compatible(arg.shape, expected_shape, dim_dict)
-        return _ShapeInfo(is_comp, expected_shape, arg.shape)
-    else:
+    if expected_shape is None:
         return _ShapeInfo(True)
+    else:
+        arg_shape = cast(Tuple[int, ...], tuple(arg.shape))
+        is_comp = is_compatible(arg_shape, expected_shape, dim_dict)
+        return _ShapeInfo(is_comp, expected_shape, arg_shape)
 
 
-def _params_to_named_params(args: Tuple[Any, ...], kwargs: Dict[str, Any],
-                            arglist: Sequence[str]) -> Dict[str, Any]:
+# yapf: disable
+T = TypeVar('T')
+def _params_to_named_params(args: Sequence[Optional[T]],  # noqa: E302
+                            kwargs: Dict[str, Optional[T]],
+                            arglist: Sequence[str]) -> Dict[str, Optional[T]]:
+    # yapf: enable
     assert len(args) <= len(arglist)
     d = dict(zip(arglist, args))
     d.update(kwargs)
