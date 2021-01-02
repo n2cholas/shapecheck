@@ -19,7 +19,7 @@ def map_nested(f: Callable,
     # NOTE: Types should be:
     # (Callable[[T, ...], S], NestedStruct[T], NestedStruct, Optional[Type])
     # -> NestedStruct[S]
-    if stop_type and isinstance(data, stop_type):
+    if stop_type and type(data) == stop_type:
         return f(data, *other_data)
     elif isinstance(data, dict):
         gen = ((k, (data[k], *map(itemgetter(k), other_data))) for k in data)
@@ -41,7 +41,7 @@ def reduce_nested(f: Callable[[T, T], T],
                   stop_type: Type = None) -> T:
     # NOTE: Types should be:
     # (Callable[[T, S], T], NestedStruct[S], Optional[T], Type) -> T
-    if stop_type and isinstance(data, stop_type):
+    if stop_type and type(data) == stop_type:
         return data
     elif isinstance(data, (dict, set, list, tuple)):
         it = data.values() if isinstance(data, dict) else data
