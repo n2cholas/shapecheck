@@ -30,34 +30,51 @@ pip install --upgrade git+https://github.com/n2cholas/shapecheck.git
 import numpy as np
 from shapecheck import check_shapes
 
-@check_shapes('-1,N', 'N', None, '3,N', out_='3,N')
-def f(a, b, c, d):
-    # a must be rank 2, where the first dim can be anything.
-    # b must be rank 1, where the first dim must be N (a's second dim)
-    # c will not be checked
-    # d must be rank 2, where the first dim is 3, the second dim is N
-    # since we specified `out_=`, the output shape will be checked as well
-    return (a + b).sum(0, keepdims=True) + d
+@check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, aux_info=None, out_='N')
+def per_eg_loss(batch, aux_info):
+    # do something with aux_info
+    return (batch['imgs'].mean((1, 2, 3)) - batch['labels'].squeeze())**2
 
-f(np.ones((7, 5)), np.ones(5), 'anything', np.ones((3, 5)))  # succeeds
-f(np.ones((2, 6)), np.ones(6), np.ones(1), np.ones((3, 6)))  # succeeds
-f(np.ones((2, 6)), np.ones(5), np.ones(1), np.ones((3, 6)))  # fails
+per_eg_loss({'imgs': np.ones((3, 2, 2, 1)), 'labels': np.ones((3,1))}, np.ones(1))
+per_eg_loss({'imgs': np.ones((5, 3, 3, 4)), 'labels': np.ones((5,1))}, 'any')
+# Below line fails:
+per_eg_loss({'imgs': np.ones((3, 5, 2, 1)), 'labels': np.ones((3,1))}, 'any')
 ```
 
-The last statement throws a `ShapeError` with an informative message.
+Error message:
 
 ```
-shapecheck.exception.ShapeError: in function f.
-Named Dimensions: {'N': 6}.
+shapecheck.exception.ShapeError: in function per_eg_loss.
+Named Dimensions: {'N': 3, 'W': 5}.
 Input:
-    Match:    Argument: a Expected Shape: (-1, 'N') Actual Shape: (2, 6).
-    MisMatch: Argument: b Expected Shape: ('N',) Actual Shape: (5,).
-    Skipped:  Argument: c.
-    Match:    Argument: d Expected Shape: (3, 'N') Actual Shape: (3, 6).
+    Argument: batch  Type: <class 'dict'>
+        MisMatch: Key: imgs Expected Shape: ('N', 'W', 'W', -1) Actual Shape: (3, 5, 2, 1).
+        Match:    Key: labels Expected Shape: ('N', 1) Actual Shape: (3, 1).
+    Skipped:  Argument: aux_info.
 ```
 
-Above, the named dimensions have one letter names, but they can be strings of
-any length.
+In the above example, we compute per example loss with a batch of data, which
+is a dictionary with images and labels. We specify that we want `N` square
+images, where we can have any number of channels (indicated by the `-1`).
+Inputs to `check_shape` can be arbitrarily nested dicts/lists/tuples, as long
+as it matches the structure of the inputs to the decorated function.
+
+We specify that aux_info shouldn't be checked. Equivalently, we could've
+excluded it from the definition:
+
+```python
+@check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, out_='N'): ...
+```
+
+or passed it as a positional argument.
+
+```python
+@check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, None, out_='N'): ...
+```
+
+Finally, we specify the output shape should be `('N',)`. All non-input shape
+arguments to `check_shape` have an underscore after them so they don't
+conflict with the decorated function's arguments.
 
 If you have a function with shapechecking that calls many other functions
 with shapechecking, you can optionally enforce that dimensions with the same
@@ -132,33 +149,6 @@ h(np.ones((6, 2)), np.ones((1, 1)))  # fails
 h(np.ones((6, 2)), np.ones((1)))  # fails
 ```
 
-You can used nested lists/tuples/dictionaries as inputs, as demonstrated below:
-
-```python
-@check_shapes(('N,1', 'N'), '1,2', out_={'key1': ('N,1', 'N'), 'key2': ('1,2')})
-def f(a, b):
-    return {'key1': (a[1], a[1]), 'key2': b.sum()}
-
-f((np.ones((7, 1)), np.ones((7,))), np.ones((1, 2)))  # fails
-```
-
-Which fails with the following error:
-
-```
-shapecheck.exception.ShapeError: in function f.
-Named Dimensions: {'N': 7}.
-Input:
-    Argument: a  Type: <class 'tuple'>
-        Match:    Ind: 0 Expected Shape: ('N', 1) Actual Shape: (7, 1).
-        Match:    Ind: 1 Expected Shape: ('N',) Actual Shape: (7,).
-    Match:    Argument: b Expected Shape: (1, 2) Actual Shape: (1, 2).
-Output:  Type: <class 'dict'>
-    Key: key1
-        MisMatch: Ind: 0 Expected Shape: ('N', 1) Actual Shape: (7,).
-        Match:    Ind: 1 Expected Shape: ('N',) Actual Shape: (7,).
-    MisMatch: Key: key2 Expected Shape: (1, 2) Actual Shape: ().
-```
-
 You can enable/disable shapechecking globally as shown below:
 
 ```python
@@ -213,22 +203,3 @@ git commit -am "Make change"  # adds modified files and commits
 
 If you don't use pre-commit, there is a GitHub action to automatically
 format your code when you push to `main`.
-
-## Design Decisions
-
-- Using strings instead of tuples to specify shapes.
-  - Pros:
-    - more concise, fewer paranthesis makes it more human readable.
-    - can use more expressive syntax, e.g. named variadic dims (WIP).
-  - Cons:
-    - need string validation at runtime
-    - more prone to errors.
-- Decorator instead of type hints.
-  - Pros:
-    - this library is for runtime checking, not static analysis
-    - type hints would interfere with existing type hints and static
-      analyzers
-  - Cons:
-    - more verbose, adds visual noise
-    - if you change argument order or refactor, you need to remember
-      to make the same changes to the decorator, which is error prone.

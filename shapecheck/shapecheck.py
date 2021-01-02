@@ -171,6 +171,11 @@ def check_shapes(
     return decorator
 
 
+def is_checking_enabled() -> bool:
+    """Return whether shape checking is enabled."""
+    return _CHECKING_ENABLED
+
+
 class set_checking_enabled:
     """Context manager to toggle shape checking on or off."""
     def __init__(self, mode: bool) -> None:  # noqa: D107
@@ -184,11 +189,6 @@ class set_checking_enabled:
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         global _CHECKING_ENABLED
         _CHECKING_ENABLED = self.prev
-
-
-def is_checking_enabled() -> bool:
-    """Return whether shape checking is enabled."""
-    return _CHECKING_ENABLED
 
 
 class _match_callees_enabled:
@@ -206,14 +206,24 @@ class _match_callees_enabled:
 
 
 class _update_global_named_dim_info:
+    """Manages _NAME_USE_CNT and _DIM_DICT when using match_callees."""
     def __init__(self, named_dim_set: Set[str]) -> None:
         self.named_dim_set = named_dim_set
 
     def __enter__(self) -> None:
+        """Track which named dimensions are used by the current function."""
         for name in self.named_dim_set:
             _NAME_USE_CNT[name] = _NAME_USE_CNT.get(name, 0) + 1
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        """Remove named dimensions that are no longer used.
+
+        When _NAME_USE_CNT[name] == 1, that means the current function was the
+        first one to define the named dimension, so when this function returns,
+        the named dimension should no longer be bound to an actual quantity.
+        This was, we can track named dimensions as we call more functions and
+        clean them up when no longer needed.
+        """
         for name in self.named_dim_set:
             _NAME_USE_CNT[name] -= 1
             if _NAME_USE_CNT[name] == 0:
