@@ -1,6 +1,6 @@
 from typing import List, NamedTuple
 
-from shapecheck.utils import map_nested, reduce_nested
+from shapecheck.utils import iterate_nested, map_nested
 
 
 class DummyNamedTuple(NamedTuple):
@@ -89,33 +89,26 @@ def test_map_nested_stop_type():
     assert mapped_struct == [sum([1, 2, 3]), sum([5, 6, 7])]
 
 
-def test_reduce_nested():
+def test_iterate_nested():
     struct = {'test1': DummyNamedTuple(1, [1, 2, 3]), 'test2': 1, 13: ({6, 7}, (7,))}
-    assert reduce_nested(lambda x, y: x + y, struct) == 28
+    assert list(iterate_nested(struct)) == [1, 1, 2, 3, 1, 6, 7, 7]
 
 
-def test_reduce_nested_no_struct():
-    assert reduce_nested(lambda x, y: x + y, 3) == 3
+def test_iterate_nested_no_struct():
+    assert list(iterate_nested(3)) == [3]
 
 
-def test_reduce_nested_initial():
-    assert reduce_nested(lambda x, y: x and y, [], True)
-    assert reduce_nested(lambda x, y: x and y, {}, True)
-    assert reduce_nested(lambda x, y: x and y, tuple(), True)
-    assert reduce_nested(lambda x, y: x and y, set(), True)
-
-
-def test_reduce_nested_stop_type():
-    class StopList(list):
+def test_iterate_nested_stop_type():
+    class SL(list):
         pass
 
     struct = [
         {
-            'x': StopList([3, 3]),
-            11: StopList([2])
+            'x': SL([3, 3]),
+            11: SL([2])
         },
-        (StopList([[2]]), StopList([3, 3, 3])),
-        StopList([1]),
+        (SL([[2]]), SL([3, 3, 3])),
+        SL([1]),
     ]
-    reduced = reduce_nested(lambda x, y: x + y, struct, stop_type=StopList)
-    assert reduced == StopList([3, 3, 2, [2], 3, 3, 3, 1])
+    reduced = list(iterate_nested(struct, stop_type=SL))
+    assert reduced == [SL([3, 3]), SL([2]), SL([[2]]), SL([3, 3, 3]), SL([1])]

@@ -1,8 +1,9 @@
-pytest
+codecov
+flake8
+isort
+mypy
 numpy
 pre-commit
-isort
-yapf==0.30.0
-mypy
+pytest
 pytest-cov
-codecov
+yapf==0.30.0

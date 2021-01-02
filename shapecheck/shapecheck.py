@@ -1,10 +1,9 @@
 import functools
 import inspect
-from operator import and_, attrgetter
-from typing import Any, Callable, Dict, Optional, Sequence, Set, Tuple, Union, cast
+from typing import Any, Callable, Dict, Optional, Sequence, Set, Tuple, cast
 
 from .exception import ShapeError, _ShapeInfo
-from .utils import NamedDimMap, NestedStruct, ShapeDef, map_nested, reduce_nested
+from .utils import NamedDimMap, NestedStruct, ShapeDef, iterate_nested, map_nested
 
 __all__ = [
     'check_shapes', 'is_compatible', 'str_to_shape', 'set_checking_enabled',
@@ -13,10 +12,9 @@ __all__ = [
 
 # TODO: make these thread local
 _CHECKING_ENABLED = True
+_MATCH_CALLEES = False
 _DIM_DICT: NamedDimMap = {}
-# count number of functions in the call stack that have used each variable
 _NAME_USE_CNT: Dict[str, int] = {}
-_MATCH_CALLEES: bool = False
 
 
 def is_compatible(shape: Tuple[int],
@@ -70,8 +68,7 @@ def str_to_shape(string: Optional[str]) -> Optional[ShapeDef]:
                 has_ellipsis = True
                 yield s
             else:
-                # need try-catch because str.isnumeric() misses -1
-                try:
+                try:  # need try-catch because str.isnumeric() misses -1
                     yield int(s)
                 except ValueError:
                     yield s
@@ -83,12 +80,13 @@ def check_shapes(*in_args: NestedStruct[str],
                  out_: Optional[NestedStruct[str]] = None,
                  match_callees_: bool = False,
                  **in_kws: NestedStruct[str]) -> Callable[[Callable], Callable]:
-    in_args, in_kws = map_nested(str_to_shape, (in_args, in_kws))  # type: ignore
+    in_args, in_kws = map_nested(str_to_shape, (in_args, in_kws))
     out_ = map_nested(str_to_shape, out_)
 
     def decorator(f: Callable) -> Callable:
         arglist = cast(Sequence[str], inspect.signature(f).parameters.keys())
         expected_shapes = _params_to_dict(in_args, in_kws, arglist)
+        named_dim_set: Set[str] = set()
 
         @functools.wraps(f)
         def inner(*args: Any, **kwargs: Any) -> Any:
@@ -97,42 +95,32 @@ def check_shapes(*in_args: NestedStruct[str],
             if not _CHECKING_ENABLED:
                 return f(*args)
 
-            if ((match_callees_ or _MATCH_CALLEES)
-                    and not inner.named_dim_set):  # type: ignore
-                # TODO: get rid of map hack and fix reduce_nested
-                collect_fn = functools.partial(
-                    _collect_names, named_dim_set=inner.named_dim_set)  # type: ignore
-                map_nested(collect_fn, (expected_shapes, out_))
+            if (match_callees_ or _MATCH_CALLEES) and not named_dim_set:
+                for dim in iterate_nested((expected_shapes, out_)):
+                    if isinstance(dim, str) and dim != '...':
+                        named_dim_set.add(dim)
 
-            with _update_global_named_dim_info(inner.named_dim_set):  # type: ignore
+            with _update_global_named_dim_info(named_dim_set):
                 dim_dict: NamedDimMap = _DIM_DICT if match_callees_ or _DIM_DICT else {}
                 check_fn = functools.partial(_check_item, dim_dict=dim_dict)
 
-                input_info = cast(
-                    Dict[str, NestedStruct[_ShapeInfo]],
-                    map_nested(check_fn,
-                               expected_shapes,
-                               named_args,
-                               stop_type=ShapeDef))
-                nested_is_comp = map_nested(attrgetter('is_compatible'),
-                                            input_info,
-                                            stop_type=_ShapeInfo)
-                if not reduce_nested(and_, nested_is_comp, initial=True):
+                input_info = map_nested(check_fn, expected_shapes, named_args,
+                                        stop_type=ShapeDef)  # yapf: disable
+                input_info = cast(Dict[str, NestedStruct[_ShapeInfo]], input_info)
+                if not all(s.is_compatible
+                           for s in iterate_nested(input_info, stop_type=_ShapeInfo)):
                     raise ShapeError(f.__name__, dim_dict, input_info)
 
                 with _match_callees_enabled(match_callees_ or _MATCH_CALLEES):
                     output = f(*args, **kwargs)
 
                 output_info = map_nested(check_fn, out_, output, stop_type=ShapeDef)
-                nested_is_comp = map_nested(attrgetter('is_compatible'),
-                                            output_info,
-                                            stop_type=_ShapeInfo)
-                if not reduce_nested(and_, nested_is_comp, initial=True):
+                if not all(s.is_compatible
+                           for s in iterate_nested(output_info, stop_type=_ShapeInfo)):
                     raise ShapeError(f.__name__, dim_dict, input_info, output_info)
 
             return output
 
-        inner.named_dim_set = set()  # type: ignore
         return inner
 
     return decorator
@@ -196,13 +184,8 @@ def _check_item(expected_shape: ShapeDef,
         return _ShapeInfo(True)
 
 
-def _collect_names(x: Optional[Union[str, int]], named_dim_set: Set[str]) -> None:
-    if isinstance(x, str) and x != '...':
-        named_dim_set.add(x)
-
-
 def _params_to_dict(args: Tuple[Any, ...], kwargs: Dict[str, Any],
-                    arglist: Sequence[str]):
+                    arglist: Sequence[str]) -> Dict[str, Any]:
     assert len(args) <= len(arglist)
     d = dict(zip(arglist, args))
     d.update(kwargs)

@@ -1,6 +1,5 @@
-from functools import partial, reduce
 from operator import itemgetter
-from typing import Any, Callable, Dict, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, Callable, Dict, Iterator, Optional, Tuple, Type, TypeVar, Union
 
 T = TypeVar('T')
 NestedStruct = Union[T, Any]
@@ -35,23 +34,14 @@ def map_nested(f: Callable,
         return f(data, *other_data)
 
 
-def reduce_nested(f: Callable[[T, T], T],
-                  data: NestedStruct[T],
-                  initial: Optional[T] = None,
-                  stop_type: Type = None) -> T:
-    # TODO: Update function so the signature can be:
-    # (Callable[[T, S], T], NestedStruct[S], Optional[T], Type) -> T
+def iterate_nested(data: NestedStruct, stop_type: Optional[Type] = None) -> Iterator:
     if stop_type and type(data) == stop_type:
-        return data
-    elif isinstance(data, (dict, set, list, tuple)):
-        it = data.values() if isinstance(data, dict) else data
-        red_fn = partial(reduce_nested, stop_type=stop_type)
-        if initial is None:
-            return reduce(f, (red_fn(f, values) for values in it))
-        else:
-            return reduce(f, (red_fn(f, values) for values in it), initial)
+        yield data
+    elif isinstance(data, (dict, tuple, list, set)):
+        for v in (data.values() if isinstance(data, dict) else data):
+            yield from iterate_nested(v, stop_type=stop_type)
     else:
-        return data
+        yield data
 
 
 def _green_highlight(s):
