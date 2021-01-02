@@ -130,15 +130,15 @@ def check_shapes(
 
     def decorator(f: Callable) -> Callable:
         arglist = cast(Sequence[str], inspect.signature(f).parameters.keys())
-        expected_shapes = _params_to_dict(in_args, in_kws, arglist)
+        expected_shapes = _params_to_named_params(in_args, in_kws, arglist)
         named_dim_set: Set[str] = set()
 
         @functools.wraps(f)
         def inner(*args: Any, **kwargs: Any) -> Any:
-            named_args = _params_to_dict(args, kwargs, arglist)
-
             if not _CHECKING_ENABLED:
                 return f(*args)
+
+            named_args = _params_to_named_params(args, kwargs, arglist)
 
             if (match_callees_ or _MATCH_CALLEES) and not named_dim_set:
                 for dim in iterate_nested((expected_shapes, out_)):
@@ -231,8 +231,8 @@ def _check_item(expected_shape: ShapeDef,
         return _ShapeInfo(True)
 
 
-def _params_to_dict(args: Tuple[Any, ...], kwargs: Dict[str, Any],
-                    arglist: Sequence[str]) -> Dict[str, Any]:
+def _params_to_named_params(args: Tuple[Any, ...], kwargs: Dict[str, Any],
+                            arglist: Sequence[str]) -> Dict[str, Any]:
     assert len(args) <= len(arglist)
     d = dict(zip(arglist, args))
     d.update(kwargs)
