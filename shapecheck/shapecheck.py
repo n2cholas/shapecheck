@@ -20,6 +20,18 @@ _NAME_USE_CNT: Dict[str, int] = {}
 def is_compatible(shape: Tuple[int],
                   expected_shape: ShapeDef,
                   dim_dict: Optional[NamedDimMap] = None) -> bool:
+    """Check whether shape is compatible with expected_shape.
+
+    Args:
+        shape: dimensions to be checked
+        expected_shape: pattern shape to match against shape, which can consist
+            of integers, named dimensions, and named variadic dimensions.
+        dim_dict: dictionary mapping named dimensions/variadic dimensions to
+            their concrete quantities (integers or tuples of integers).
+
+    Returns:
+        True if shape matches expected_shape, otherwise False.
+    """
     if dim_dict is None:
         dim_dict = {}
 
@@ -57,6 +69,18 @@ def is_compatible(shape: Tuple[int],
 
 
 def str_to_shape(string: Optional[str]) -> Optional[ShapeDef]:
+    """Convert string describing shape definition to a shape definition.
+
+    Args:
+        string: string with dimensions, named dimensions (e.g. N), named
+            variadic dimensions (e.g. V...), or variadic dimensions (...)
+            seperated by commas (spaces between items allowed).  e.g. 'batch,
+            named_variadic...', '...,1,2,3', or 'N, M'.
+
+    Returns:
+        Shape definition corresponding to string, which is a tuple of integers
+        or strings. If input string is None, returns None.
+    """
     def gen():
         has_ellipsis = False
         for s in string.split(','):
@@ -76,10 +100,31 @@ def str_to_shape(string: Optional[str]) -> Optional[ShapeDef]:
     return ShapeDef(gen()) if string else None
 
 
-def check_shapes(*in_args: NestedStruct[str],
-                 out_: Optional[NestedStruct[str]] = None,
-                 match_callees_: bool = False,
-                 **in_kws: NestedStruct[str]) -> Callable[[Callable], Callable]:
+def check_shapes(
+        *in_args: NestedStruct[Optional[str]],
+        out_: Optional[NestedStruct[Optional[str]]] = None,
+        match_callees_: bool = False,
+        **in_kws: NestedStruct[Optional[str]]) -> Callable[[Callable], Callable]:
+    """Return decorator that checks input/output shapes of decorated function.
+
+    Specify the expected shapes in the same order or using the same parameter
+    names as the decorated function. Unspecified arguments or arguments
+    explicitly given an expected shape of None will not be checked.
+
+    Args:
+        *in_args: nested dict/list/tuples of strings describing the allowed
+            shapes for the decorated function. the nesting structure should match
+            the structure of the function inputs.
+        out_: nested dict/list/tuples of strings describing allowed shape for
+            output of the decorated function.
+        match_callees_: whether or not the named dimensions/variadic dimensions
+            of functions called by the decorated functions should match the named
+            dimensions of the decorated function.
+        **in_kws: same as *in_args but key word arguments.
+
+    Returns:
+        Decorator that will check input/output shapes of decorated function.
+    """
     in_args, in_kws = map_nested(str_to_shape, (in_args, in_kws))
     out_ = map_nested(str_to_shape, out_)
 
@@ -127,7 +172,8 @@ def check_shapes(*in_args: NestedStruct[str],
 
 
 class set_checking_enabled:
-    def __init__(self, mode: bool) -> None:
+    """Context manager to toggle shape checking on or off."""
+    def __init__(self, mode: bool) -> None:  # noqa: D107
         global _CHECKING_ENABLED
         self.prev = _CHECKING_ENABLED
         _CHECKING_ENABLED = mode
@@ -141,6 +187,7 @@ class set_checking_enabled:
 
 
 def is_checking_enabled() -> bool:
+    """Return whether shape checking is enabled."""
     return _CHECKING_ENABLED
 
 

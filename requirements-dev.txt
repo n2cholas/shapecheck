@@ -1,5 +1,6 @@
 codecov
 flake8
+flake8-docstrings
 isort
 mypy
 numpy
