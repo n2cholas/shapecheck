@@ -1,6 +1,6 @@
 from typing import Dict, Iterator, NamedTuple, Optional, Tuple
 
-from .utils import NamedDimMap, NestedStruct, ShapeDef, _style_text, _styles
+from .utils import NamedDimMap, NestedStruct, ShapeDef
 
 
 class _ShapeInfo(NamedTuple):
@@ -48,6 +48,21 @@ class ShapeError(RuntimeError):
                 strings.extend(_nested_shape_info_to_strs(output_info, indent=4))
 
         super().__init__('\n'.join(strings))
+
+
+class _styles:
+    BLUE = '\033[94m'
+    BOLD = '\033[1m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    HEADER = '\033[95m'
+    RED = '\033[91m'
+    UNDERLINE = '\033[4m'
+    YELLOW = '\033[93m'
+
+
+def _style_text(string: str, style: str):
+    return f'{style}{string}\033[0m'
 
 
 def _nested_shape_info_to_strs(info: NestedStruct[_ShapeInfo],

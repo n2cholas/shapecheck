@@ -1,4 +1,3 @@
-from operator import itemgetter
 from typing import Any, Callable, Dict, Iterator, Optional, Tuple, Type, TypeVar, Union
 
 NamedDimMap = Dict[str, Union[int, Tuple[int, ...]]]
@@ -48,7 +47,7 @@ def map_nested(f: Callable,
     if stop_type and type(data) == stop_type:
         return f(data, *other_data)
     elif isinstance(data, dict):
-        gen = ((k, (data[k], *map(itemgetter(k), other_data))) for k in data)
+        gen = ((k, (data[k], *(o[k] for o in other_data))) for k in data)
         return type(data)((k, map_nested(f, *v, stop_type=stop_type)) for k, v in gen)
     elif isinstance(data, (tuple, list, set)):
         gen = (map_nested(f, x, *oth_x, stop_type=stop_type)
@@ -80,18 +79,3 @@ def iterate_nested(data: NestedStruct, stop_type: Optional[Type] = None) -> Iter
             yield from iterate_nested(v, stop_type=stop_type)
     else:
         yield data
-
-
-class _styles:
-    BLUE = '\033[94m'
-    BOLD = '\033[1m'
-    CYAN = '\033[96m'
-    GREEN = '\033[92m'
-    HEADER = '\033[95m'
-    RED = '\033[91m'
-    UNDERLINE = '\033[4m'
-    YELLOW = '\033[93m'
-
-
-def _style_text(string: str, style: str):
-    return f'{style}{string}\033[0m'

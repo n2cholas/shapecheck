@@ -126,12 +126,12 @@ This library also supports variadic dimensions. You can use '...' to indicate 0
 or more dimensions:
 
 ```python
-@check_shapes('1,...,1', '...,1,1')
+@check_shapes('dim, ..., 1', '..., dim, 1')
 def g(a, b):
     pass
 
-g(np.ones((1, 3, 4, 1)), np.ones((2, 1, 1)))  # succeeds
-g(np.ones((1, 1)), np.ones((1, 1)))  # succeeds
+g(np.ones((2, 3, 4, 1)), np.ones((5, 2, 1)))  # succeeds
+g(np.ones((3, 1)), np.ones((3, 1)))  # succeeds
 g(np.ones((2, 3, 4, 1)), np.ones((1, 1)))  # fails
 ```
 
@@ -139,10 +139,10 @@ The last statement fails with the following error:
 
 ```
 shapecheck.exception.ShapeError: in function g.
-Named Dimensions: {}.
+Named Dimensions: {'dim': 2}.
 Input:
-    MisMatch: Argument: a Expected Shape: (1, '...', 1) Actual Shape: (2, 3, 4, 1).
-    Match:    Argument: b Expected Shape: ('...', 1, 1) Actual Shape: (1, 1).
+    Match:    Argument: a Expected Shape: ('dim', '...', 1) Actual Shape: (2, 3, 4, 1).
+    MisMatch: Argument: b Expected Shape: ('...', 'dim', 1) Actual Shape: (1, 1).
 ```
 
 You can also name variadic dimensions, to ensure that a contiguous sequence of
@@ -180,4 +180,5 @@ assert is_checking_enabled()
 ```
 
 If you have any questions or issues with the library, please raise an issue on
-[GitHub](https://github.com/n2cholas/shapecheck/issues). Hope this helps!
+[GitHub](https://github.com/n2cholas/shapecheck/issues). Hope you enjoy using
+the library!
