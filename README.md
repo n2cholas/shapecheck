@@ -38,21 +38,22 @@ pip install --upgrade git+https://github.com/n2cholas/shapecheck.git
 import numpy as np
 from shapecheck import check_shapes
 
-@check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, aux_info=None, out_='N')
-def per_eg_loss(batch, aux_info):
+@check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, aux_info=None, out_='')
+def loss(batch, aux_info):
     # do something with aux_info
-    return (batch['imgs'].mean((1, 2, 3)) - batch['labels'].squeeze())**2
+    diff = (batch['imgs'].mean((1, 2, 3)) - batch['labels'].squeeze())
+    return np.mean(diff**2)
 
-per_eg_loss({'imgs': np.ones((3, 2, 2, 1)), 'labels': np.ones((3,1))}, np.ones(1))
-per_eg_loss({'imgs': np.ones((5, 3, 3, 4)), 'labels': np.ones((5,1))}, 'any')
+loss({'imgs': np.ones((3, 2, 2, 1)), 'labels': np.ones((3,1))}, np.ones(1))
+loss({'imgs': np.ones((5, 3, 3, 4)), 'labels': np.ones((5,1))}, 'any')
 # Below line fails:
-per_eg_loss({'imgs': np.ones((3, 5, 2, 1)), 'labels': np.ones((3,1))}, 'any')
+loss({'imgs': np.ones((3, 5, 2, 1)), 'labels': np.ones((3,1))}, 'any')
 ```
 
 Error message:
 
 ```
-shapecheck.exception.ShapeError: in function per_eg_loss.
+shapecheck.exception.ShapeError: in function loss.
 Named Dimensions: {'N': 3, 'W': 5}.
 Input:
     Argument: batch  Type: <class 'dict'>
@@ -61,11 +62,11 @@ Input:
     Skipped:  Argument: aux_info.
 ```
 
-In the above example, we compute per example loss with a batch of data, which
-is a dictionary with images and labels. We specify that we want `N` square
-images, where we can have any number of channels (indicated by the `-1`).
-Inputs to `check_shape` can be arbitrarily nested dicts/lists/tuples, as long
-as it matches the structure of the inputs to the decorated function.
+In the above example, we compute the loss with a batch of data, which is a
+dictionary with images and labels. We specify that we want `N` square images
+which can have any number of channels (indicated by the `-1`).  Inputs to
+`check_shape` can be arbitrarily nested dicts/lists/tuples, as long as it
+matches the structure of the inputs to the decorated function.
 
 We specify that aux_info shouldn't be checked. Equivalently, we could've
 excluded it from the definition:
@@ -80,41 +81,43 @@ or passed it as a positional argument.
 @check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, None, out_='N')
 ```
 
-Finally, we specify the output shape should be `('N',)`. All non-input shape
-arguments to `check_shape` have an underscore after them so they don't
-conflict with the decorated function's arguments.
+Finally, we specify the output shape should be a scalar via `out_=''`. All
+non-input shape arguments to `check_shape` have an underscore after them so
+they don't conflict with the decorated function's arguments (right now, just
+`out_` and `match_callees_`).
 
-If you have a function with shape-checking that calls many other functions
-with shape-checking, you can optionally enforce that dimensions with the same
-letter name in the parent correspond to the same sized dimension in the children.
-That is, you can check that a function's input named dimensions match the same
-named dimensions of all functions higher in the call stack. For example:
+If you have a function with shape-checking that calls many other functions with
+shape-checking, you can optionally enforce that dimensions with the same letter
+name in the caller correspond to the same sized dimension in the callees via
+`match_callees_=True`.  That is, you can check that a function's input named
+dimensions match the same named dimensions of all functions higher in the call
+stack. For example:
 
 ```python
 @check_shapes('M', 'N', 'O', out_='M')
-def child_fn(a, b, c):
+def callee_fn(a, b, c):
     return a
 
 @check_shapes('M', 'N', 'R')
-def parent_fn_1(x, y, z):
-    return child_fn(y, x, z)
+def caller_fn_1(x, y, z):
+    return callee_fn(y, x, z)
 
 @check_shapes('M', 'N', 'R', match_callees_=True)
-def parent_fn_2(x, y, z):
-    return child_fn(y, x, z)
+def caller_fn_2(x, y, z):
+    return callee_fn(y, x, z)
 
-parent_fn_1(np.ones(5), np.ones(6), np.ones(7))  # succeeds
-parent_fn_2(np.ones(5), np.ones(6), np.ones(7))  # fails
+caller_fn_1(np.ones(5), np.ones(6), np.ones(7))  # succeeds
+caller_fn_2(np.ones(5), np.ones(6), np.ones(7))  # fails
 ```
 
-Here, we (accidentally) swapped `x` and `y` when calling `child_fn`.
-`parent_fn_1` succeeds because the inputs are compatible when considering the
-named dimensions for `child_fn` alone. But `parent_fn_2` fails because the
-named dimensions are inconsistent between the parent and child functions.  The
+Here, we (accidentally) swapped `x` and `y` when calling `callee_fn`.
+`caller_fn_1` succeeds because the inputs are compatible when considering the
+named dimensions for `callee_fn` alone. But `caller_fn_2` fails because the
+named dimensions are inconsistent between the caller and the callee. The
 following error would be produced:
 
 ```
-shapecheck.exception.ShapeError: in function child_fn.
+shapecheck.exception.ShapeError: in function callee_fn.
 Named Dimensions: {'M': 5, 'N': 6, 'R': 7, 'O': 7}.
 Input:
     MisMatch: Argument: a Expected Shape: ('M',) Actual Shape: (6,).

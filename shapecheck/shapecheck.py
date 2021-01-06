@@ -103,7 +103,7 @@ def str_to_shape(string: Optional[str]) -> Optional[ShapeDef]:
                     yield s
 
     if isinstance(string, str):
-        return ShapeDef(gen())
+        return ShapeDef(gen()) if string != '' else ShapeDef()
     elif string is None:
         return None
     else:
@@ -254,6 +254,8 @@ def _check_item(expected_shape: Optional[ShapeDef],
                 dim_dict: Optional[NamedDimMap] = None) -> _ShapeInfo:
     if expected_shape is None:
         return _ShapeInfo(True)
+    elif len(expected_shape) == 0 and not hasattr(arg, 'shape'):
+        return _ShapeInfo(isinstance(arg, (int, float)))
     else:
         arg_shape = cast(Tuple[int, ...], tuple(arg.shape))
         is_comp = is_compatible(arg_shape, expected_shape, dim_dict)

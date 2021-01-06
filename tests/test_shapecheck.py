@@ -384,10 +384,6 @@ def test_check_shapes_signature(cs_args, cs_kwargs, f_args, f_kwargs):
 
 
 def test_readme_example2():
-    import numpy as np
-
-    from shapecheck import check_shapes
-
     @check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, aux_info=None, out_='N')
     def per_eg_loss(batch, aux_info):
         # do something with aux_info
@@ -397,3 +393,26 @@ def test_readme_example2():
     per_eg_loss({'imgs': np.ones((5, 3, 3, 4)), 'labels': np.ones((5, 1))}, 'any')
     with pytest.raises(ShapeError):
         per_eg_loss({'imgs': np.ones((3, 5, 2, 1)), 'labels': np.ones((3, 1))}, 'any')
+
+
+def test_readme_example3():
+    @check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, aux_info=None, out_='')
+    def loss(batch, aux_info):
+        # do something with aux_info
+        diff = (batch['imgs'].mean((1, 2, 3)) - batch['labels'].squeeze())
+        return np.mean(diff**2)
+
+    loss({'imgs': np.ones((3, 2, 2, 1)), 'labels': np.ones((3, 1))}, np.ones(1))
+    loss({'imgs': np.ones((5, 3, 3, 4)), 'labels': np.ones((5, 1))}, 'any')
+    with pytest.raises(ShapeError):
+        loss({'imgs': np.ones((3, 5, 2, 1)), 'labels': np.ones((3, 1))}, 'any')
+
+
+@pytest.mark.parametrize('inp, out', [(1, 1), (np.array(2), 2), (3, np.array(4)),
+                                      (np.array(5), np.array(6))])
+def test_scalar_output(inp, out):
+    @check_shapes(x='', out_='')
+    def loss_fn(x):
+        return out
+
+    loss_fn(inp)
