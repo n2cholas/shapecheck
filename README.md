@@ -18,6 +18,13 @@ With frameworks like JAX or TensorFlow, "runtime" is actually "compile" or
 PyTorch, asynchronous execution will hide the cost of shape checking. You only
 pay a small overhead with synchronous, eager frameworks like numpy.
 
+This library was inspired by many other tools, including
+[nptyping](https://github.com/ramonhagenaars/nptyping),
+[einops](https://github.com/arogozhnikov/einops),
+[shapecheck](https://github.com/rosshemsley/shapecheck), [torch named
+tensors](https://pytorch.org/docs/stable/named_tensor.html),
+[tensorcheck](https://github.com/bodin-e/tensorcheck).
+
 ## Install Library
 
 From PyPI:
