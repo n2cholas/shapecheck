@@ -45,7 +45,7 @@ pip install --upgrade git+https://github.com/n2cholas/shapecheck.git
 import numpy as np
 from shapecheck import check_shapes
 
-@check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, 'N', out_='')
+@check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, 'N', None, out_='')
 def loss_fn(batch, arg2, arg3):
     diff = (batch['imgs'].mean((1, 2, 3)) - batch['labels'].squeeze())
     return np.mean(diff**2 + arg2)
@@ -78,17 +78,18 @@ which can have any number of channels (indicated by the `-1`).  Inputs to
 structure of the shape specification matches the structure of the inputs to the
 decorated function. We want `arg2` to be a vector of size `N`.
 
-By excluding `arg3` from our decorator, we indicate that `arg3` shouldn't be
-checked. Equivalently, we could've used `None`
+We used `None` in the decorator to indicate that `arg3`'s shape shouldn't be
+checked.  Equivalently, we could've excluded it (since it's the last argument):
 
 ```python
-@check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, 'N', None, out_='')
+@check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, 'N', out_='')
 ```
 
 or even specified some of our shapes as keyword arguments:
 
 ```python
-@check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, 'N', arg3=None, out_='')
+@check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'},
+              arg2='N', arg3=None, out_='')
 ```
 
 Finally, we specify the output shape should be a scalar via `out_=''`. All

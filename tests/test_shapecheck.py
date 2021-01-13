@@ -385,7 +385,7 @@ def test_check_shapes_signature(cs_args, cs_kwargs, f_args, f_kwargs):
 
 def test_readme_example2():
     # yapf: disable
-    @check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, 'N', out_='')
+    @check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, 'N', None, out_='')
     def loss_fn(batch, arg2, arg3):
         diff = (batch['imgs'].mean((1, 2, 3)) - batch['labels'].squeeze())
         return np.mean(diff**2 + arg2)
