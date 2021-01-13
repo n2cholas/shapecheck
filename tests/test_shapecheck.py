@@ -384,15 +384,20 @@ def test_check_shapes_signature(cs_args, cs_kwargs, f_args, f_kwargs):
 
 
 def test_readme_example2():
-    @check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, aux_info=None, out_='N')
-    def per_eg_loss(batch, aux_info):
-        # do something with aux_info
-        return (batch['imgs'].mean((1, 2, 3)) - batch['labels'].squeeze())**2
+    # yapf: disable
+    @check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, 'N', out_='')
+    def loss_fn(batch, arg2, arg3):
+        diff = (batch['imgs'].mean((1, 2, 3)) - batch['labels'].squeeze())
+        return np.mean(diff**2 + arg2)
 
-    per_eg_loss({'imgs': np.ones((3, 2, 2, 1)), 'labels': np.ones((3, 1))}, np.ones(1))
-    per_eg_loss({'imgs': np.ones((5, 3, 3, 4)), 'labels': np.ones((5, 1))}, 'any')
+    loss_fn({'imgs': np.ones((3, 2, 2, 1)), 'labels': np.ones((3, 1))},
+            arg2=np.ones(3), arg3=np.ones((2, 3)))  # succeeds
+    loss_fn({'imgs': np.ones((5, 3, 3, 4)), 'labels': np.ones((5, 1))},
+            arg2=np.ones(5), arg3='any')  # succeeds
     with pytest.raises(ShapeError):
-        per_eg_loss({'imgs': np.ones((3, 5, 2, 1)), 'labels': np.ones((3, 1))}, 'any')
+        loss_fn({'imgs': np.ones((3, 5, 2, 1)), 'labels': np.ones((3, 1))},
+                arg2=np.ones(3), arg3='any')  # fails
+    # yapf: enable
 
 
 def test_readme_example3():
