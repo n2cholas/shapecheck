@@ -13,10 +13,12 @@ problems by ensuring function input/output shape expectations are met. The
 concise syntax for expressing shapes serves to document code as well, so new
 users can quickly understand what's going on.
 
-With frameworks like JAX or TensorFlow, "runtime" is actually "compile" or
-"trace" time, so you don't pay any cost during execution. For frameworks like
-PyTorch, asynchronous execution will hide the cost of shape checking. You only
-pay a small overhead with synchronous, eager frameworks like numpy.
+This library has minimal overhead, and can be easily disabled globally after
+prototyping if desired. With frameworks like JAX or TensorFlow, "runtime" is
+actually "compile" or "trace" time, so you don't pay any cost during execution.
+For frameworks like PyTorch, asynchronous execution will hide the cost of shape
+checking. You only pay a small overhead with synchronous, eager frameworks like
+numpy.
 
 This library was inspired by many other tools, including
 [nptyping](https://github.com/ramonhagenaars/nptyping),
@@ -45,99 +47,113 @@ pip install --upgrade git+https://github.com/n2cholas/shapecheck.git
 import numpy as np
 from shapecheck import check_shapes
 
-@check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, 'N', None, out_='')
-def loss_fn(batch, arg2, arg3):
+@check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, 'N', out_='')
+def loss_fn(batch, weights):
     diff = (batch['imgs'].mean((1, 2, 3)) - batch['labels'].squeeze())
-    return np.mean(diff**2 + arg2)
+    return np.mean(weights * diff**2)
 
 loss_fn({'imgs': np.ones((3, 2, 2, 1)), 'labels': np.ones((3, 1))},
-        arg2=np.ones(3), arg3=np.ones((2, 3)))  # succeeds
+        weights=np.ones(3))  # succeeds
 loss_fn({'imgs': np.ones((5, 3, 3, 4)), 'labels': np.ones((5, 1))},
-        arg2=np.ones(5), arg3='any')  # succeeds
+        weights=np.ones(5))  # succeeds
 loss_fn({'imgs': np.ones((3, 5, 2, 1)), 'labels': np.ones((3, 1))},
-        arg2=np.ones(3), arg3='any')  # fails
+        weights=np.ones(3))  # fails
 ```
 
 Error message:
 
 ```
-shapecheck.exception.ShapeError: in function loss_fn.
+ShapeError: in function loss_fn.
 Named Dimensions: {'N': 3, 'W': 5}.
 Input:
     Argument: batch  Type: <class 'dict'>
         MisMatch: Key: imgs Expected Shape: ('N', 'W', 'W', -1) Actual Shape: (3, 5, 2, 1).
         Match:    Key: labels Expected Shape: ('N', 1) Actual Shape: (3, 1).
-    Match:    Argument: arg2 Expected Shape: ('N',) Actual Shape: (3,).
-    Skipped:  Argument: arg3.
+    Match:    Argument: weights Expected Shape: ('N',) Actual Shape: (3,).
 ```
 
-In the above example, we compute the loss with a batch of data, which is a
-dictionary with images and labels. We specify that we want `N` square images
-which can have any number of channels (indicated by the `-1`).  Inputs to
-`check_shape` can be arbitrarily nested dicts/lists/tuples, as long as the
-structure of the shape specification matches the structure of the inputs to the
-decorated function. We want `arg2` to be a vector of size `N`.
-
-We used `None` in the decorator to indicate that `arg3`'s shape shouldn't be
-checked.  Equivalently, we could've excluded it (since it's the last argument):
-
-```python
-@check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'}, 'N', out_='')
-```
-
-or even specified some of our shapes as keyword arguments:
-
-```python
-@check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'},
-              arg2='N', arg3=None, out_='')
-```
+In the above example, we compute the "loss" with a batch of data, which is a
+dictionary with `'imgs'` and `'labels'`. We specify that `'imgs'` should be of
+shape `N,W,W,-1`, i.e., `N` square images which can have any number of
+channels (indicated by the `-1`).  We want the `'labels'` to have shape `N,1`,
+and `weights` to be a vector of size `N`.
 
 Finally, we specify the output shape should be a scalar via `out_=''`. All
 non-input shape arguments to `check_shape` have an underscore after them so
 they don't conflict with the decorated function's arguments (for now, just
 `out_` and `match_callees_`).
 
-If you have a function with shape-checking that calls many other functions with
-shape-checking, you can optionally enforce that dimensions with the same letter
-name in the caller correspond to the same sized dimension in the callees via
-`match_callees_=True`.  That is, you can check that a function's input named
-dimensions match the same named dimensions of all checked functions higher in
-the call stack. For example:
+Inputs to `check_shape` can be arbitrarily nested dicts/lists/tuples, as long
+as the structure of the shape specification matches the structure of the inputs
+to the decorated function.
+
+The shapes can be specified as positional arguments (like in the example), or
+as key word arguments. For example, the following two are equivalent to the
+example above:
 
 ```python
-@check_shapes('M', 'N', 'O', out_='M')
-def callee(a, b, c):
-    return a
+@check_shapes(batch={'imgs': 'N,W,W,-1', 'labels': 'N,1'},
+              weights='N', out_='')
+def loss_fn(batch, weights):
+    ...
 
-@check_shapes('M', 'N', 'R')
-def caller_fn_1(x, y, z):
-    return callee(y, x, z)
-
-@check_shapes('M', 'N', 'R', match_callees_=True)
-def caller_fn_2(x, y, z):
-    return callee(y, x, z)
-
-caller_fn_1(np.ones(5), np.ones(6), np.ones(7))  # succeeds
-caller_fn_2(np.ones(5), np.ones(6), np.ones(7))  # fails
+@check_shapes({'imgs': 'N,W,W,-1', 'labels': 'N,1'},
+              weights='N', out_='')
+def loss_fn(batch, weights):
+    ...
 ```
 
-Here, we (accidentally) swapped `x` and `y` when calling `callee`.
-`caller_fn_1` succeeds because the inputs are compatible when considering the
-named dimensions for `callee_fn` alone. But `caller_fn_2` fails because
-`match_callees_=True` and the named dimensions are inconsistent between the
-caller and the callee. The following error would be produced:
+### Skipping Arguments
+
+If you want to not check an argument (e.g. if it's not an array), you can
+exclude that argument, or specify that the shape is `None`. For example, the
+following two are equivalent:
+
+```python
+@check_shapes(None, 'N,2')
+def fn(arg1_that_isnt_checked, arg2):
+    ...
+
+@check_shapes(arg2='N,2')
+def fn(arg1_that_isnt_checked, arg2):
+    ...
+```
+
+### Consistent Shapes between Functionc Calls
+
+If you have a function with shape-checking that calls other functions with
+shape-checking, you can optionally enforce that dimensions with the same letter
+name in the caller correspond to the same sized dimension in the callees via
+`match_callees_=True`.  That is, you can check that named dimensions are
+consistent between functions on the call stack.
+
+```python
+@check_shapes('M')
+def fn2(x):
+    return x
+
+@check_shapes('M', 'N', match_callees_=True)
+def fn1(x, y):
+    return fn2(y)
+
+fn1(np.ones(5), np.ones(6))  # fails
+```
+
+Here, we (mistakenly) used `y` instead of `x` when calling `fn2`.  When
+`match_callees_=False`, this function would work just fine.  When
+`match_callees_=True`, we get the following error:
 
 ```
-shapecheck.exception.ShapeError: in function callee.
-Named Dimensions: {'M': 5, 'N': 6, 'R': 7, 'O': 7}.
+ShapeError: in function fn2.
+Named Dimensions: {'M': 5, 'N': 6}.
 Input:
     MisMatch: Argument: a Expected Shape: ('M',) Actual Shape: (6,).
-    MisMatch: Argument: b Expected Shape: ('N',) Actual Shape: (5,).
-    Match:    Argument: c Expected Shape: ('O',) Actual Shape: (7,).
 ```
 
-This library also supports variadic dimensions. You can use '...' to indicate 0
-or more dimensions (the spaces are optional):
+### Variadic Dimensions
+
+This library also supports variadic dimensions. You can use `'...'` to indicate
+0 or more dimensions (the spaces in the example strings are optional):
 
 ```python
 @check_shapes('dim, ..., 1', '..., dim, 1')
@@ -152,7 +168,7 @@ g(np.ones((2, 3, 4, 1)), np.ones((1, 1)))  # fails
 The last statement fails with the following error, since `dim` doesn't match:
 
 ```
-shapecheck.exception.ShapeError: in function g.
+ShapeError: in function g.
 Named Dimensions: {'dim': 2}.
 Input:
     Match:    Argument: a Expected Shape: ('dim', '...', 1) Actual Shape: (2, 3, 4, 1).
@@ -168,9 +184,21 @@ def h(a, b):
     pass
 
 h(np.ones((7, 1, 2)), np.ones((1, 2)))  # succeeds
-h(np.ones((6, 2)), np.ones((1, 1)))  # fails
+h(np.ones((6, 2, 1)), np.ones((1, 1)))  # fails
 h(np.ones((6, 2)), np.ones((1)))  # fails
 ```
+
+The error message for the first fail would be:
+
+```
+ShapeError: in function h.
+Named Dimensions: {'batch': 6, 'variadic...': (2, 1)}.
+Input:
+    Match:    Argument: a Expected Shape: ('batch', 'variadic...') Actual Shape: (6, 2, 1).
+    MisMatch: Argument: b Expected Shape: ('variadic...',) Actual Shape: (1, 1).
+```
+
+### Toggling Checking Globally
 
 You can enable/disable shapechecking globally as shown below:
 

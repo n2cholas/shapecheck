@@ -26,10 +26,10 @@ Then, whenever you commit:
 
 ```bash
 git add .
-git commit -m "Make change"
+git commit -m "Make change."
 # files may be modified by the pre-commit hooks or may need modification
 # fix the files that need to be fixed, then
-git commit -am "Make change"  # adds modified files and commits
+git commit -am "Make change."  # adds modified files and commits
 ```
 
 If you don't use pre-commit, there is a GitHub action to automatically

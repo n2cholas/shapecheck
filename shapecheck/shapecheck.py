@@ -122,12 +122,6 @@ def check_shapes(
     names as the decorated function. Unspecified arguments or arguments
     explicitly given an expected shape of None will not be checked.
 
-    Using `match_callees_=True` makes this method thread-unsafe due to the use
-    of globals.  You most likely don't want to use Python threads with
-    array/tensor processing code (which this library was designed for), as it
-    provides no performance benefit outside of I/O. You likely want to use
-    multiprocessing for performance, which is safe with this library.
-
     Args:
         *in_args: nested dict/list/tuples of strings describing the allowed
             shapes for the decorated function. the nesting structure should match
@@ -143,6 +137,12 @@ def check_shapes(
     Returns:
         Decorator that will check input/output shapes of decorated function.
     """
+    # Using `match_callees_=True` makes this method python thread-unsafe due to
+    # the use of globals.  You most likely don't want to use Python threads
+    # with array/tensor processing code (which this library was designed for),
+    # as it provides no performance benefit outside of I/O. You likely want to
+    # use multiprocessing for performance, which is safe with this library.
+
     in_args, in_kws = map_nested(str_to_shape, (in_args, in_kws))
     out_ = map_nested(str_to_shape, out_)
 
